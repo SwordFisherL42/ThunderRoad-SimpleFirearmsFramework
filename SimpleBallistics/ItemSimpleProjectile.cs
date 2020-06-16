@@ -11,7 +11,7 @@ using ThunderRoad;
  * 
  */
 
-namespace ImbuementController
+namespace SimpleBallistics
 {
     public class ItemSimpleProjectile : MonoBehaviour
     {

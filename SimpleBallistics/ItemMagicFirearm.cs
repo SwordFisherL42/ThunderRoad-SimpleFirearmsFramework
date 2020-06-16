@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Collections;
+using UnityEngine;
 using ThunderRoad;
 
 /* Description: An Item plugin for `ThunderRoad` which provides the basic functionality needed
@@ -9,22 +11,40 @@ using ThunderRoad;
  * 
  */
 
-namespace ImbuementController
+namespace SimpleBallistics
 {
+    public enum FireMode
+    {
+        Misfire = 0,
+        Single = 1,
+        Burst = 2,
+        Auto = 3
+    }
+
     public class ItemMagicFirearm : MonoBehaviour
     {
         protected Item item;
         protected ItemModuleMagicFirearm module;
 
+        //Unity Prefab objects
         private Transform muzzlePoint;
-        private Item projectile;
-        private Rigidbody projectileBody;
         private AudioSource fireSound;
+        private AudioSource emptySound;
+        private AudioSource switchSound;
         private ParticleSystem MuzzleFlash;
         private Animator Animations;
+        private Handle gunGrip;
+        //Selection mode logic
+        private FireMode fireModeSelection;
+        private int selectionIndex;
+        private readonly Array fireModeEnums = Enum.GetValues(typeof(FireMode));
+        //Extendeded interaction logic
+        private bool triggerPressed;
         private bool gunGripHeldLeft;
         private bool gunGripHeldRight;
-        private Handle gunGrip;
+        //Projectile references
+        private Item projectile;
+        private Rigidbody projectileBody;
 
         public void Awake()
         {
@@ -35,11 +55,16 @@ namespace ImbuementController
             else muzzlePoint = item.transform;
 
             if (!string.IsNullOrEmpty(module.fireSoundRef)) fireSound = item.definition.GetCustomReference(module.fireSoundRef).GetComponent<AudioSource>();
+            if (!string.IsNullOrEmpty(module.emptySoundRef)) emptySound = item.definition.GetCustomReference(module.emptySoundRef).GetComponent<AudioSource>();
+            if (!string.IsNullOrEmpty(module.swtichSoundRef)) switchSound = item.definition.GetCustomReference(module.swtichSoundRef).GetComponent<AudioSource>();
             if (!string.IsNullOrEmpty(module.muzzleFlashRef)) MuzzleFlash = item.definition.GetCustomReference(module.muzzleFlashRef).GetComponent<ParticleSystem>();
             if (!string.IsNullOrEmpty(module.animatorRef)) Animations = item.definition.GetCustomReference(module.animatorRef).GetComponent<Animator>();
 
             //Override SFX volume from JSON
             if (fireSound != null) fireSound.volume = module.soundVolume;
+
+            //var fireModeEnums = Enum.GetValues(typeof(FireMode));
+            fireModeSelection = (FireMode)fireModeEnums.GetValue(module.fireMode);
 
             item.OnHeldActionEvent += OnHeldAction;
             if (!string.IsNullOrEmpty(module.mainGripID)) gunGrip = item.definition.GetCustomReference(module.mainGripID).GetComponent<Handle>();
@@ -54,7 +79,17 @@ namespace ImbuementController
         {
             if (action == Interactable.Action.UseStart)
             {
-                Fire();
+                triggerPressed = true;
+                StartCoroutine(GeneralFire(fireModeSelection, module.fireRate, module.burstNumber));
+            }
+            if (action == Interactable.Action.UseStop || action == Interactable.Action.Ungrab)
+            {
+                //Stop Firing.
+                triggerPressed = false;
+            }
+            if (module.allowCycleFireMode && action == Interactable.Action.AlternateUseStart)
+            {
+                CycleFireMode();
             }
         }
 
@@ -96,17 +131,17 @@ namespace ImbuementController
             if (module.recoilTorques != null)
             {
                 item.rb.AddRelativeTorque(new Vector3(
-                    Random.Range(module.recoilTorques[0], module.recoilTorques[1]) * module.recoilMult,
-                    Random.Range(module.recoilTorques[2], module.recoilTorques[3]) * module.recoilMult,
-                    Random.Range(module.recoilTorques[4], module.recoilTorques[5]) * module.recoilMult),
+                    UnityEngine.Random.Range(module.recoilTorques[0], module.recoilTorques[1]) * module.recoilMult,
+                    UnityEngine.Random.Range(module.recoilTorques[2], module.recoilTorques[3]) * module.recoilMult,
+                    UnityEngine.Random.Range(module.recoilTorques[4], module.recoilTorques[5]) * module.recoilMult),
                     ForceMode.Impulse);
             }
             if (module.recoilForces != null)
             {
                 item.rb.AddRelativeForce(new Vector3(
-                    Random.Range(module.recoilForces[0], module.recoilForces[1]) * module.recoilMult,
-                    Random.Range(module.recoilForces[2], module.recoilForces[3]) * module.recoilMult,
-                    Random.Range(module.recoilForces[4], module.recoilForces[5]) * module.recoilMult));
+                    UnityEngine.Random.Range(module.recoilForces[0], module.recoilForces[1]) * module.recoilMult,
+                    UnityEngine.Random.Range(module.recoilForces[2], module.recoilForces[3]) * module.recoilMult,
+                    UnityEngine.Random.Range(module.recoilForces[4], module.recoilForces[5]) * module.recoilMult));
             }
         }
 
@@ -123,12 +158,57 @@ namespace ImbuementController
             return currentSpellID;
         }
 
-        
+        public void CycleFireMode()
+        {
+            selectionIndex = (int)fireModeSelection;
+            selectionIndex++;
+            if (selectionIndex >= fireModeEnums.Length) selectionIndex = 0;
+            fireModeSelection = (FireMode)fireModeEnums.GetValue(selectionIndex);
+            if (switchSound != null) switchSound.Play();
+        }
+
         public void Fire()
         {
             PreFireEffects();
             SpawnProjectile(module.projectileID, GetCurrentSpellChargeID());
             ApplyRecoil();
+        }
+
+        private IEnumerator GeneralFire(FireMode fireSelector = FireMode.Single, int fireRate = 60, int burstNumber = 3)
+        {
+            //Assuming fireRate as Rate-Per-Minute, convert to adequate deylay between shots, given by fD = 1/(fR/60) 
+            float fireDelay = 60.0f / (float)fireRate;
+            //Based on selection mode, perform the expected behaviours
+            if (fireSelector == FireMode.Misfire)
+            {
+                if (emptySound != null) emptySound.Play();
+                yield return null;
+            }
+
+            else if (fireSelector == FireMode.Single)
+            {
+                Fire();
+                yield return new WaitForSeconds(fireDelay);
+            }
+
+            else if (fireSelector == FireMode.Burst)
+            {
+                for (int i = 0; i < burstNumber; i++)
+                {
+                    Fire();
+                    yield return new WaitForSeconds(fireDelay);
+                }
+            }
+
+            else if (fireSelector == FireMode.Auto)
+            {
+                while (triggerPressed) //triggerPressed is handled by OnHeldAction() events
+                {
+                    Fire();
+                    yield return new WaitForSeconds(fireDelay);
+                }
+            }
+            yield return null;
         }
 
         //Effects/Actions to play before the projectile is spawned

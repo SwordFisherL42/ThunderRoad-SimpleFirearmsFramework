@@ -1,6 +1,6 @@
 ﻿using ThunderRoad;
 
-namespace ImbuementController
+namespace SimpleBallistics
 {
     
     public class ItemModuleSimpleProjectile : ItemModule
