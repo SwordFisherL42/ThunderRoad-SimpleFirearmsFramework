@@ -17,6 +17,7 @@ namespace SimpleBallistics
     {
         protected Item item;
         protected ItemModuleSimpleProjectile module;
+        protected Damager thisDamager;
         private float lifeDuration;
         private string spellQueue;
 
@@ -35,6 +36,20 @@ namespace SimpleBallistics
                 spellQueue = null;
             }
         }
+
+
+        //private void OnCollisionEnter(Collision hit)
+        //{
+        //    Debug.Log(gameObject.name + " just hit " + hit.gameObject.name);
+        //    RagdollPart hitPart = hit.gameObject.GetComponent<RagdollPart>();
+        //    //Ragdoll Activation
+        //    if (hitPart != null)
+        //    {
+        //        Creature triggerCreature = hitPart.ragdoll.creature;
+        //        if (triggerCreature == Creature.player) return;
+        //        return;
+        //    }
+        //}
 
         private void LateUpdate()
         {
@@ -59,7 +74,9 @@ namespace SimpleBallistics
         {
             if (string.IsNullOrEmpty(SpellID)) return;
             SpellCastCharge transferedSpell = Catalog.GetData<SpellCastCharge>(SpellID, true).Clone();
-            StartCoroutine(TransferDeltaEnergy(item.imbues[0], transferedSpell));
+            try { StartCoroutine(TransferDeltaEnergy(item.imbues[0], transferedSpell)); }
+            catch { Debug.Log("[Magic-Guns] EXCEPTION with TransferImbueCharge Index"); }
+            
         }
 
         IEnumerator TransferDeltaEnergy(Imbue itemImbue, SpellCastCharge activeSpell, float energyDelta = 5.0f, int counts = 20)
