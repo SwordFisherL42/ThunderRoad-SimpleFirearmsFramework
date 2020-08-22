@@ -1,55 +1,41 @@
-﻿using System;
-using System.Collections;
-using UnityEngine;
+﻿using UnityEngine;
 using ThunderRoad;
+using static SimpleBallistics.FirearmFunctions;
+
+//using Firemode = SimpleBallistics.FirearmFunctions.FireMode;
 
 /* Description: An Item plugin for `ThunderRoad` which provides the basic functionality needed
  * to setup a simple ballistic weapon.
  * 
  * author: SwordFisherL42 ("Fisher")
- * date: 08/15/2020
+ * date: 08/22/2020
  * 
  */
 
 namespace SimpleBallistics
 {
-    public enum FireMode
-    {
-        Misfire = 0,
-        Single = 1,
-        Burst = 2,
-        Auto = 3
-    }
-
     public class ItemMagicFirearm : MonoBehaviour
     {
+        //ThunderRoad references
         protected Item item;
         protected ItemModuleMagicFirearm module;
-
-        //Unity Prefab objects
-        private Animator Animations;
         private Handle gunGrip;
+        //Unity references
+        private Animator Animations;
         private Transform muzzlePoint;
         private ParticleSystem MuzzleFlash;
         private AudioSource fireSound;
         private AudioSource emptySound;
         private AudioSource switchSound;
         private AudioSource reloadSound;
-        //Ammo counter logic
+        //Weapon logic references
+        private FireMode fireModeSelection;
         private int remaingingAmmo;
         private bool infAmmo = false;
         private bool isEmpty = false;
-        //Selection mode logic
-        private FireMode fireModeSelection;
-        private int selectionIndex;
-        private readonly Array fireModeEnums = Enum.GetValues(typeof(FireMode));
-        //Extendeded interaction logic
         private bool triggerPressed;
         private bool gunGripHeldLeft;
         private bool gunGripHeldRight;
-        //Projectile references
-        private Item projectile;
-        private Rigidbody projectileBody;
 
         public void Awake()
         {
@@ -77,7 +63,7 @@ namespace SimpleBallistics
                 infAmmo = true;
             }
 
-            //BUG: Unable to set manually soundVolume due to issue with AudioMixerLinker script.
+            //TODO: BUG: Unable to set manually soundVolume due to issue with AudioMixerLinker script.
             //Override SFX volume from JSON
             //if ((module.soundVolume > 0.0f) && (module.soundVolume <= 1.0f))
             //{
@@ -100,13 +86,12 @@ namespace SimpleBallistics
             }
         }
 
-
         public void OnHeldAction(Interactor interactor, Handle handle, Interactable.Action action)
         {
             if (action == Interactable.Action.UseStart)
             {
                 triggerPressed = true;
-                StartCoroutine(GeneralFire(fireModeSelection, module.fireRate, module.burstNumber));
+                StartCoroutine(GeneralFire(Fire, TriggerIsPressed, fireModeSelection, module.fireRate, module.burstNumber, emptySound));
             }
             if (action == Interactable.Action.UseStop || action == Interactable.Action.Ungrab)
             {
@@ -118,187 +103,20 @@ namespace SimpleBallistics
                 if (module.allowCycleFireMode && !isEmpty)
                 {
                     if (emptySound != null) emptySound.Play();
-                    CycleFireMode();
+                    fireModeSelection = CycleFireMode(fireModeSelection);
                 }
                 else
                 {
                     //Reload the weapon is the empty flag has been set.
-                    if (Animations != null && !string.IsNullOrEmpty(module.reloadAnim))
+                    if (Animate(Animations, module.reloadAnim))
                     {
                         if (reloadSound != null) reloadSound.Play();
-                        Animations.Play(module.reloadAnim);
                     }
                     remaingingAmmo = module.ammoCapacity;
                     isEmpty = false;
                 }
 
             }
-        }
-
-        public void SpawnProjectile(string projectileID, string currentSpell)
-        {
-            //Debug.Log("[Magic-Guns] projectile currentSpell: " + currentSpell);
-            var projectileData = Catalog.GetData<ItemPhysic>(projectileID, true);
-            if (projectileData == null)
-            {
-                Debug.LogError("[Magic-Guns][ERROR] No projectile named " + projectileID.ToString());
-                return;
-            }
-            else
-            {
-                projectile = projectileData.Spawn(true);
-                if (!projectile.gameObject.activeInHierarchy) projectile.gameObject.SetActive(true);
-                item.IgnoreObjectCollision(projectile);
-                //Set imbue charge on projectile using ItemSimpleProjectile subclass
-                ItemSimpleProjectile projectileController = projectile.gameObject.GetComponent<ItemSimpleProjectile>();
-                if (projectileController != null)
-                {
-                    projectileController.AddChargeToQueue(currentSpell);
-                }
-                
-                projectile.transform.position = muzzlePoint.position;
-                projectile.transform.rotation = Quaternion.Euler(muzzlePoint.rotation.eulerAngles);
-                projectileBody = projectile.rb;
-                projectileBody.velocity = item.rb.velocity;
-                projectileBody.AddForce(projectileBody.transform.forward * 1000.0f * module.bulletForce);
-                projectile.Throw(module.throwMult, Item.FlyDetection.CheckAngle);
-            }
-
-        }
-
-        public void ApplyRecoil()
-        {
-            // Add angular + positional recoil to the gun
-            if (module.recoilTorques != null)
-            {
-                item.rb.AddRelativeTorque(new Vector3(
-                    UnityEngine.Random.Range(module.recoilTorques[0], module.recoilTorques[1]) * module.recoilMult,
-                    UnityEngine.Random.Range(module.recoilTorques[2], module.recoilTorques[3]) * module.recoilMult,
-                    UnityEngine.Random.Range(module.recoilTorques[4], module.recoilTorques[5]) * module.recoilMult),
-                    ForceMode.Impulse);
-            }
-            if (module.recoilForces != null)
-            {
-                item.rb.AddRelativeForce(new Vector3(
-                    UnityEngine.Random.Range(module.recoilForces[0], module.recoilForces[1]) * module.recoilMult,
-                    UnityEngine.Random.Range(module.recoilForces[2], module.recoilForces[3]) * module.recoilMult,
-                    UnityEngine.Random.Range(module.recoilForces[4], module.recoilForces[5]) * module.recoilMult));
-            }
-        }
-
-        public string GetCurrentSpellChargeID()
-        {
-            string currentSpellID = "";
-            foreach (Imbue itemImbue in item.imbues)
-            {
-                if (itemImbue.spellCastBase != null)
-                {
-                    currentSpellID = itemImbue.spellCastBase.id;
-                }
-            }
-            return currentSpellID;
-        }
-
-        public void CycleFireMode()
-        {
-            selectionIndex = (int)fireModeSelection;
-            selectionIndex++;
-            if (selectionIndex >= fireModeEnums.Length) selectionIndex = 0;
-            fireModeSelection = (FireMode)fireModeEnums.GetValue(selectionIndex);
-        }
-
-        public bool Fire()
-        {
-            //Returns 'true' if Fire was successful.
-            if (isEmpty) return false;
-            if (infAmmo || remaingingAmmo > 0)
-            {
-                PreFireEffects();
-                SpawnProjectile(module.projectileID, GetCurrentSpellChargeID());
-                ApplyRecoil();
-                remaingingAmmo--;
-                return true;
-            }
-            return false;
-        }
-
-        private IEnumerator GeneralFire(FireMode fireSelector = FireMode.Single, int fireRate = 60, int burstNumber = 3)
-        {
-            //Assuming fireRate as Rate-Per-Minute, convert to adequate deylay between shots, given by fD = 1/(fR/60) 
-            float fireDelay = 60.0f / (float)fireRate;
-            //Based on selection mode, perform the expected behaviours
-            if (fireSelector == FireMode.Misfire)
-            {
-                if (emptySound != null) emptySound.Play();
-                yield return null;
-            }
-
-            else if (fireSelector == FireMode.Single)
-            {
-                if (!Fire())
-                {
-                    StartCoroutine(GeneralFire(FireMode.Misfire));
-                }
-                yield return new WaitForSeconds(fireDelay);
-            }
-
-            else if (fireSelector == FireMode.Burst)
-            {
-                for (int i = 0; i < burstNumber; i++)
-                {
-                    if (!Fire())
-                    {
-                        StartCoroutine(GeneralFire(FireMode.Misfire));
-                        break;
-                    }
-                    yield return new WaitForSeconds(fireDelay);
-                }
-                yield return null;
-            }
-
-            else if (fireSelector == FireMode.Auto)
-            {
-                while (triggerPressed) //triggerPressed is handled by OnHeldAction() events
-                {
-                    if (!Fire())
-                    {
-                        StartCoroutine(GeneralFire(FireMode.Misfire));
-                        break;
-                    }
-                    yield return new WaitForSeconds(fireDelay);
-                }
-            }
-            yield return null;
-        }
-
-        //Effects/Actions to play before the projectile is spawned
-        public void PreFireEffects()
-        {
-            if (MuzzleFlash!=null) MuzzleFlash.Play();
-            if ((Animations != null) && (!string.IsNullOrEmpty(module.fireAnim)))
-            {
-                // Last Shot
-                if (remaingingAmmo == 1)
-                {
-                    Animations.Play(module.emptyAnim);
-                    isEmpty = true;
-                }
-                else
-                {
-                    Animations.Play(module.fireAnim);
-                }
-            }
-
-             
-            if (fireSound != null) fireSound.Play();
-            Haptics();
-        }
-
-        //Extended Interaction Functions, if a Grip is defined// 
-        public void Haptics()
-        {
-            if (gunGripHeldRight) PlayerControl.handRight.HapticShort(module.hapticForce);
-            if (gunGripHeldLeft) PlayerControl.handLeft.HapticShort(module.hapticForce);
         }
 
         public void OnMainGripGrabbed(Interactor interactor, Handle handle, EventTime eventTime)
@@ -312,6 +130,39 @@ namespace SimpleBallistics
         {
             if (interactor.playerHand == Player.local.handRight) gunGripHeldRight = false;
             if (interactor.playerHand == Player.local.handLeft) gunGripHeldLeft = false;
+        }
+
+        public bool TriggerIsPressed() { return triggerPressed; }
+
+        public void PreFireEffects()
+        {
+            if (MuzzleFlash != null) MuzzleFlash.Play();
+            // Last Shot
+            if (remaingingAmmo == 1)
+            {
+                Animate(Animations, module.emptyAnim);
+                isEmpty = true;
+            }
+            else
+            {
+                Animate(Animations, module.fireAnim);
+            }
+            if (fireSound != null) fireSound.Play();
+        }
+
+        public bool Fire()
+        {
+            //Returns 'true' if Fire was successful.
+            if (isEmpty) return false;
+            if (infAmmo || remaingingAmmo > 0)
+            {
+                PreFireEffects();
+                ShootProjectile(item, module.projectileID, muzzlePoint, GetItemSpellChargeID(item), module.bulletForce, module.throwMult);
+                ApplyRecoil(item.rb, module.recoilForces, module.recoilMult, gunGripHeldLeft, gunGripHeldRight, module.hapticForce);
+                remaingingAmmo--;
+                return true;
+            }
+            return false;
         }
 
     }

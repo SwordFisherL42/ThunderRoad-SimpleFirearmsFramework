@@ -32,8 +32,6 @@ namespace SimpleBallistics
         public float[] recoilTorques = { 500f, 700f, 0f, 0f, 0f, 0f }; // x-min, x-max, y-min, y-max, z-min, z-max
         public float[] recoilForces = { 0f, 0f, 600f, 800f, -3000f, -2000f };  // x-min, x-max, y-min, y-max, z-min, z-max
 
-        //public float hitForce = 100f;
-
         public override void OnItemLoaded(Item item)
         {
             base.OnItemLoaded(item);

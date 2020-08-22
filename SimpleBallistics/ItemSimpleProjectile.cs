@@ -1,4 +1,4 @@
-﻿using System.Collections;
+﻿using System;
 using UnityEngine;
 using ThunderRoad;
 
@@ -7,7 +7,7 @@ using ThunderRoad;
  * via the AddChargeToQueue(...) method and defines an item lifetime for performance.
  * 
  * author: SwordFisherL42 ("Fisher")
- * date: 06/15/2020
+ * date: 08/22/2020
  * 
  */
 
@@ -17,9 +17,7 @@ namespace SimpleBallistics
     {
         protected Item item;
         protected ItemModuleSimpleProjectile module;
-        protected Damager thisDamager;
-        private float lifeDuration;
-        private string spellQueue;
+        protected string queuedSpell;
 
         protected void Awake()
         {
@@ -29,69 +27,41 @@ namespace SimpleBallistics
 
         protected void Start()
         {
-            lifeDuration = 0.0f;
-            if (!string.IsNullOrEmpty(spellQueue))
-            {
-                TransferImbueCharge(spellQueue);
-                spellQueue = null;
-            }
-        }
-
-
-        //private void OnCollisionEnter(Collision hit)
-        //{
-        //    Debug.Log(gameObject.name + " just hit " + hit.gameObject.name);
-        //    RagdollPart hitPart = hit.gameObject.GetComponent<RagdollPart>();
-        //    //Ragdoll Activation
-        //    if (hitPart != null)
-        //    {
-        //        Creature triggerCreature = hitPart.ragdoll.creature;
-        //        if (triggerCreature == Creature.player) return;
-        //        return;
-        //    }
-        //}
-
-        private void LateUpdate()
-        {
-            if (!string.IsNullOrEmpty(spellQueue) && item.isActiveAndEnabled)
-            {
-                TransferImbueCharge(spellQueue);
-                spellQueue = null;
-            }
-            lifeDuration += Time.deltaTime;
-            if (lifeDuration >= module.lifetime)
-            {
-                item.Despawn();
-            }
+            if (module.allowFlyTime) item.rb.useGravity = false;
+            item.Despawn(module.lifetime);
         }
 
         public void AddChargeToQueue(string SpellID)
         {
-            spellQueue = SpellID;
+            queuedSpell = SpellID;
         }
 
-        public void TransferImbueCharge(string SpellID)
+        private void LateUpdate()
         {
-            if (string.IsNullOrEmpty(SpellID)) return;
-            SpellCastCharge transferedSpell = Catalog.GetData<SpellCastCharge>(SpellID, true).Clone();
-            try { StartCoroutine(TransferDeltaEnergy(item.imbues[0], transferedSpell)); }
-            catch { Debug.Log("[Magic-Guns] EXCEPTION with TransferImbueCharge Index"); }
-            
+            TransferImbueCharge(item, queuedSpell);
         }
 
-        IEnumerator TransferDeltaEnergy(Imbue itemImbue, SpellCastCharge activeSpell, float energyDelta = 5.0f, int counts = 20)
+        private void OnCollisionEnter(Collision hit)
         {
-            for (int i = 0; i < counts; i++)
+            if (item.rb.useGravity) return;
+            else item.rb.useGravity = true;
+        }
+
+        private void TransferImbueCharge(Item imbueTarget, string spellID)
+        {
+            if (String.IsNullOrEmpty(spellID)) return;
+            SpellCastCharge transferedSpell = Catalog.GetData<SpellCastCharge>(spellID, true).Clone();
+            foreach (Imbue itemImbue in imbueTarget.imbues)
             {
                 try
                 {
-                    itemImbue.Transfer(activeSpell, energyDelta);
+                    StartCoroutine(FirearmFunctions.TransferDeltaEnergy(itemImbue, transferedSpell));
+                    queuedSpell = null;
+                    return;
                 }
                 catch { }
-                yield return new WaitForSeconds(0.01f);
             }
-            yield return null;
-
         }
+
     }
 }
