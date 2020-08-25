@@ -9,6 +9,8 @@ namespace SimpleBallistics
 
     public delegate bool TriggerPressedDelegate();
 
+    public delegate void IsFiringDelegate(bool status);
+
     public class FirearmFunctions
     {
         public enum FireMode
@@ -34,6 +36,16 @@ namespace SimpleBallistics
             if ((animator == null) || String.IsNullOrEmpty(animationName)) return false;
             animator.Play(animationName);
             return true;
+        }
+
+        public static Vector3 NpcAimingAngle(BrainHuman NPCBrain, Vector3 initial, float npcDistanceToFire = 10.0f)
+        {
+            if (NPCBrain == null) return initial;
+            var inaccuracyMult = 0.2f * (NPCBrain.aimSpreadCone / npcDistanceToFire);
+            return new Vector3(
+                        initial.x + (UnityEngine.Random.Range(-inaccuracyMult, inaccuracyMult)),
+                        initial.y + (UnityEngine.Random.Range(-inaccuracyMult, inaccuracyMult)),
+                        initial.z);
         }
 
         public static void ApplyRecoil(Rigidbody itemRB, float[] recoilForces, float recoilMult = 1.0f, bool leftHandHaptic = false, bool rightHandHaptic = false, float hapticForce = 1.0f)
@@ -99,10 +111,9 @@ namespace SimpleBallistics
             yield return null;
         }
 
-        public static IEnumerator GeneralFire(TrackFiredDelegate TrackedFire, TriggerPressedDelegate TriggerPressed, FireMode fireSelector = FireMode.Single, int fireRate = 60, int burstNumber = 3, AudioSource emptySoundDriver = null)
+        public static IEnumerator GeneralFire(TrackFiredDelegate TrackedFire, TriggerPressedDelegate TriggerPressed, FireMode fireSelector = FireMode.Single, int fireRate = 60, int burstNumber = 3, AudioSource emptySoundDriver = null, IsFiringDelegate WeaponIsFiring = null)
         {
-            // Based on FireMode enum, perform the expected behaviours
-            // Assuming fireRate as Rate-Per-Minute, convert to adequate deylay between shots, given by fD = 1/(fR/60) 
+            WeaponIsFiring?.Invoke(true);
             float fireDelay = 60.0f / (float)fireRate;
 
             if (fireSelector == FireMode.Misfire)
@@ -150,7 +161,81 @@ namespace SimpleBallistics
                     yield return new WaitForSeconds(fireDelay);
                 }
             }
+            WeaponIsFiring?.Invoke(false);
             yield return null;
+        }
+
+    }
+}
+
+/*
+protected void DamageCreatureCustom(Creature triggerCreature, float damageApplied, Vector3 hitPoint)
+{
+    try
+    {
+        if (triggerCreature.health.currentHealth > 0)
+        {
+            Debug.Log("[F-L42-RayCast] Damaging enemy: " + triggerCreature.name);
+            Debug.Log("[F-L42-RayCast] Setting MaterialData... ");
+            MaterialData sourceMaterial = Catalog.GetData<MaterialData>("Metal", true); //(MaterialData)null; 
+            MaterialData targetMaterial = Catalog.GetData<MaterialData>("Flesh", true); //(MaterialData)null;
+            Debug.Log("[F-L42-RayCast] Fetching MaterialEffectData... ");
+            MaterialEffectData daggerEffectData = Catalog.GetData<MaterialEffectData>("DaggerPierce", true);
+
+            //Damager daggerDamager = new Damager();
+            //DamagerData daggerDamagerData = Catalog.GetData<DamagerData>("DaggerPierce", true);
+            //daggerDamager.Load(daggerDamagerData);
+            Debug.Log("[F-L42-RayCast] Defining DamageStruct... ");
+            DamageStruct damageStruct = new DamageStruct(DamageType.Pierce, damageApplied)
+            {
+                materialEffectData = daggerEffectData
+            };
+            Debug.Log("[F-L42-RayCast] Defining CollisionStruct... ");
+            CollisionStruct collisionStruct = new CollisionStruct(damageStruct, (MaterialData)sourceMaterial, (MaterialData)targetMaterial)
+            {
+                contactPoint = hitPoint
+            };
+            Debug.Log("[F-L42-RayCast] Applying Damage to creature... ");
+            triggerCreature.health.Damage(ref collisionStruct);
+            Debug.Log("[F-L42-RayCastFire] Damage Applied: " + damageApplied);
+
+            Debug.Log("[F-L42-RayCast] SpawnEffect... ");
+            if (collisionStruct.SpawnEffect(sourceMaterial, targetMaterial, false, out EffectInstance effectInstance))
+            {
+                effectInstance.Play();
+            }
+            Debug.Log("[F-L42-RayCastFire] Damage Applied: " + damageApplied);
+
+        }
+    }
+    catch
+    {
+        Debug.Log("[F-L42-RayCast][ERROR] Unable to damage enemy!");
+    }
+}
+
+public void RayCastFire()
+{
+    Debug.Log("[F-L42-RayCastFire] Called RayCastFire ... ");
+    var rayCastHit = Physics.Raycast(muzzlePoint.position, muzzlePoint.TransformDirection(Vector3.forward), out RaycastHit hit);
+    if (rayCastHit)
+    {
+        Debug.Log("[F-L42-RayCastFire] Hit! " + hit.transform.gameObject.name);
+        Debug.DrawRay(muzzlePoint.position, muzzlePoint.TransformDirection(Vector3.forward) * hit.distance, Color.red);
+        if (hit.collider.attachedRigidbody != null)
+        {
+            Debug.Log("[F-L42-RayCastFire] Hit Attached RigidBody ");
+            Debug.Log("[F-L42-RayCastFire] Force Applied to RB! ");
+            hit.collider.attachedRigidbody.AddForceAtPosition(muzzlePoint.TransformDirection(Vector3.forward) * module.hitForce, hit.point);
+            var targetCreature = hit.collider.attachedRigidbody.gameObject.GetComponent<Creature>();
+            if (targetCreature != null)
+            {
+                //Creature triggerCreature = hitPart.ragdoll.creature;
+                Debug.Log("[F-L42-RayCastFire] Creature Hit: " + targetCreature.name);
+                if (targetCreature == Creature.player) return;
+                DamageCreatureCustom(targetCreature, 20f, hit.point);
+            }
         }
     }
 }
+*/

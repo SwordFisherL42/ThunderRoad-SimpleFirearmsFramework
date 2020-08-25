@@ -7,6 +7,10 @@ namespace SimpleBallistics
         //Unity prefab references
         public string projectileID;
         public string muzzlePositionRef;
+        //NPC settings
+        public string npcRaycastPositionRef;
+        public float npcDistanceToFire = 10.0f;
+        public bool npcMeleeEnableFlag = true;
         //public string shellEjectionRef;
         public string fireSoundRef; 
         public string emptySoundRef;
