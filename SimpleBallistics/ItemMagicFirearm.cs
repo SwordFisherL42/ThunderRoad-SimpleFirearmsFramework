@@ -185,10 +185,8 @@ namespace SimpleBallistics
 
         private void ReloadWeapon()
         {
-            if (Animate(Animations, module.reloadAnim))
-            {
-                if (reloadSound != null) reloadSound.Play();
-            }
+            if (reloadSound != null) reloadSound.Play();
+            Animate(Animations, module.reloadAnim);
             remaingingAmmo = module.ammoCapacity;
             isEmpty = false;
         }
