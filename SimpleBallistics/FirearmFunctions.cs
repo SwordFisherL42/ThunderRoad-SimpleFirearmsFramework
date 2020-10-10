@@ -2,6 +2,8 @@
 using System.Collections;
 using UnityEngine;
 using ThunderRoad;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace SimpleBallistics
 {
@@ -23,13 +25,33 @@ namespace SimpleBallistics
 
         public static Array fireModeEnums = Enum.GetValues(typeof(FireMode));
 
-        public static FireMode CycleFireMode(FireMode currentSelection)
+        /// <summary>
+        /// Take a given FireMode and return an increment/loop to the next enum value
+        /// </summary>
+        /// <param name="currentSelection"></param>
+        /// <returns></returns>
+        public static FireMode CycleFireMode(FireMode currentSelection, List<int> allowedFireModes = null)
         {
             int selectionIndex = (int)currentSelection;
             selectionIndex++;
-            if (selectionIndex < fireModeEnums.Length) return (FireMode)fireModeEnums.GetValue(selectionIndex);
-            else return (FireMode)fireModeEnums.GetValue(0);
+            if (allowedFireModes != null)
+            {
+                foreach (var _ in Enumerable.Range(0, fireModeEnums.Length))
+                {
+                    if (allowedFireModes.Contains(selectionIndex)) return (FireMode)fireModeEnums.GetValue(selectionIndex);
+                    selectionIndex++;
+                    if (selectionIndex >= fireModeEnums.Length) selectionIndex = 0;
+                }
+                return currentSelection;
+            }
+            else
+            {
+                if (selectionIndex < fireModeEnums.Length) return (FireMode)fireModeEnums.GetValue(selectionIndex);
+                else return (FireMode)fireModeEnums.GetValue(0);
+            }
+
         }
+
 
         public static bool Animate(Animator animator, string animationName)
         {

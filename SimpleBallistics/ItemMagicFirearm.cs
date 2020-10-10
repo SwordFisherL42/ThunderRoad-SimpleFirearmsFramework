@@ -1,6 +1,9 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Collections.Generic;
+using UnityEngine;
 using ThunderRoad;
 using static SimpleBallistics.FirearmFunctions;
+
 
 /* Description: An Item plugin for `ThunderRoad` which provides the basic functionality needed
  * to setup a simple ballistic weapon.
@@ -29,6 +32,7 @@ namespace SimpleBallistics
         private AudioSource reloadSound;
         //Weapon logic references
         private FireMode fireModeSelection;
+        private List<int> allowedFireModes;
         private int remaingingAmmo;
         private bool infAmmo = false;
         private bool isEmpty = false;
@@ -50,17 +54,40 @@ namespace SimpleBallistics
             item = this.GetComponent<Item>();
             module = item.data.GetModule<ItemModuleMagicFirearm>();
 
-            if (!string.IsNullOrEmpty(module.muzzlePositionRef)) muzzlePoint = item.definition.GetCustomReference(module.muzzlePositionRef);
-            else muzzlePoint = item.transform;
+            try
+            {
+                if (!string.IsNullOrEmpty(module.muzzlePositionRef)) muzzlePoint = item.definition.GetCustomReference(module.muzzlePositionRef);
+                else muzzlePoint = item.transform;
+            }
+            catch
+            {
+                
+                Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"muzzlePositionRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.muzzlePositionRef));
+                muzzlePoint = item.transform;
+            }
 
             //Fetch Animator, ParticleSystem, and AudioSources from Custom References (see "How-To Guide" for more info on custom references)
-            if (!string.IsNullOrEmpty(module.fireSoundRef)) fireSound = item.definition.GetCustomReference(module.fireSoundRef).GetComponent<AudioSource>();
-            if (!string.IsNullOrEmpty(module.emptySoundRef)) emptySound = item.definition.GetCustomReference(module.emptySoundRef).GetComponent<AudioSource>();
-            if (!string.IsNullOrEmpty(module.swtichSoundRef)) switchSound = item.definition.GetCustomReference(module.swtichSoundRef).GetComponent<AudioSource>();
-            if (!string.IsNullOrEmpty(module.reloadSoundRef)) reloadSound = item.definition.GetCustomReference(module.reloadSoundRef).GetComponent<AudioSource>();
-            if (!string.IsNullOrEmpty(module.npcRaycastPositionRef)) npcRayCastPoint = item.definition.GetCustomReference(module.npcRaycastPositionRef);
-            if (!string.IsNullOrEmpty(module.muzzleFlashRef)) MuzzleFlash = item.definition.GetCustomReference(module.muzzleFlashRef).GetComponent<ParticleSystem>();
-            if (!string.IsNullOrEmpty(module.animatorRef)) Animations = item.definition.GetCustomReference(module.animatorRef).GetComponent<Animator>();
+
+            try { if (!string.IsNullOrEmpty(module.fireSoundRef)) fireSound = item.definition.GetCustomReference(module.fireSoundRef).GetComponent<AudioSource>(); }
+            catch { Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"fireSoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.fireSoundRef)); }
+            
+            try { if (!string.IsNullOrEmpty(module.emptySoundRef)) emptySound = item.definition.GetCustomReference(module.emptySoundRef).GetComponent<AudioSource>(); }
+            catch { Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"emptySoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.emptySoundRef)); }
+
+            try { if (!string.IsNullOrEmpty(module.reloadSoundRef)) reloadSound = item.definition.GetCustomReference(module.reloadSoundRef).GetComponent<AudioSource>(); }
+            catch { Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"reloadSoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.reloadSoundRef)); }
+
+            try { if (!string.IsNullOrEmpty(module.swtichSoundRef)) switchSound = item.definition.GetCustomReference(module.swtichSoundRef).GetComponent<AudioSource>(); }
+            catch { Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"swtichSoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.swtichSoundRef)); }
+
+            try { if (!string.IsNullOrEmpty(module.npcRaycastPositionRef)) npcRayCastPoint = item.definition.GetCustomReference(module.npcRaycastPositionRef); }
+            catch { Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"npcRaycastPositionRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.npcRaycastPositionRef)); }
+
+            try { if (!string.IsNullOrEmpty(module.muzzleFlashRef)) MuzzleFlash = item.definition.GetCustomReference(module.muzzleFlashRef).GetComponent<ParticleSystem>(); }
+            catch { Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"muzzleFlashRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.muzzleFlashRef)); }
+
+            try { if (!string.IsNullOrEmpty(module.animatorRef)) Animations = item.definition.GetCustomReference(module.animatorRef).GetComponent<Animator>(); }
+            catch { Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"animatorRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.animatorRef)); }
 
             if (npcRayCastPoint == null) { npcRayCastPoint = muzzlePoint; }
 
@@ -74,19 +101,21 @@ namespace SimpleBallistics
                 infAmmo = true;
             }
 
-            //TODO: BUG: Unable to set manually soundVolume due to issue with AudioMixerLinker script.
             //Override SFX volume from JSON
-            //if ((module.soundVolume > 0.0f) && (module.soundVolume <= 1.0f))
-            //{
-            //    if (fireSound != null)
-            //    {
-            //        fireSound.volume = module.soundVolume;
-            //    }
-            //}
+            if ((module.soundVolume > 0.0f) && (module.soundVolume <= 1.0f))
+            {
+                if (fireSound != null)
+                {
+                    fireSound.volume = module.soundVolume;
+                }
+            }
 
             //Get firemode based on numeric index of the enum
             fireModeSelection = (FireMode)fireModeEnums.GetValue(module.fireMode);
-
+            if (module.allowedFireModes != null)
+            {
+                allowedFireModes = new List<int>(module.allowedFireModes);
+            }
             //Handle interaction events
             item.OnHeldActionEvent += OnHeldAction;
             if (!string.IsNullOrEmpty(module.mainGripID)) gunGrip = item.definition.GetCustomReference(module.mainGripID).GetComponent<Handle>();
@@ -114,7 +143,8 @@ namespace SimpleBallistics
                 if (module.allowCycleFireMode && !isEmpty)
                 {
                     if (emptySound != null) emptySound.Play();
-                    fireModeSelection = CycleFireMode(fireModeSelection);
+                    fireModeSelection = FirearmFunctions.CycleFireMode(fireModeSelection, allowedFireModes);
+                    //SetFireSelectionAnimator(Animations, fireModeSelection);
                 }
                 else
                 {
@@ -205,6 +235,7 @@ namespace SimpleBallistics
                     thisNPCBrain.meleeEnabled = Vector3.Distance(item.rb.position, thisNPCBrain.targetCreature.transform.position) <= (gunGrip.definition.reach + 3f);
                 }
                 var npcAimAngle = NpcAimingAngle(thisNPCBrain, npcRayCastPoint.TransformDirection(Vector3.forward), module.npcDistanceToFire);
+
                 if (Physics.Raycast(npcRayCastPoint.position, npcAimAngle, out RaycastHit hit, thisNPCBrain.detectionRadius))
                 {
                     Creature target = null;
@@ -214,7 +245,7 @@ namespace SimpleBallistics
                         && target.faction.attackBehaviour != GameData.Faction.AttackBehaviour.Ignored && (thisNPC.faction.attackBehaviour == GameData.Faction.AttackBehaviour.Agressive || thisNPC.factionId != target.factionId))
                     {
                         Fire();
-                        npcShootDelay = Random.Range(thisNPCBrain.bowAimMinMaxDelay.x, thisNPCBrain.bowAimMinMaxDelay.y) * ((thisNPCBrain.bowDist / module.npcDistanceToFire + hit.distance / module.npcDistanceToFire) / thisNPCBrain.bowDist);
+                        npcShootDelay = UnityEngine.Random.Range(thisNPCBrain.bowAimMinMaxDelay.x, thisNPCBrain.bowAimMinMaxDelay.y) * ((thisNPCBrain.bowDist / module.npcDistanceToFire + hit.distance / module.npcDistanceToFire) / thisNPCBrain.bowDist);
                     }
                 }
             }

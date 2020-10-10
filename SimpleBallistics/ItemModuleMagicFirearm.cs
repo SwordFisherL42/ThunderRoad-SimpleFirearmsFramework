@@ -26,6 +26,7 @@ namespace SimpleBallistics
         public int ammoCapacity = 0;
         public bool allowCycleFireMode = false;
         public int fireMode = 1;
+        public int[] allowedFireModes;
         public int burstNumber = 3;
         public int fireRate = 400;
         public float bulletForce = 7.0f;
