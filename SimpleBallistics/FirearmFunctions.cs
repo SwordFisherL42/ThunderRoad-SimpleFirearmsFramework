@@ -4,6 +4,7 @@ using UnityEngine;
 using ThunderRoad;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SimpleBallistics
 {
@@ -13,8 +14,62 @@ namespace SimpleBallistics
 
     public delegate void IsFiringDelegate(bool status);
 
+    public delegate bool IsSpawningDelegate();
+
     public class FirearmFunctions
     {
+
+        public enum WeaponType
+        {
+            TestWeapon = 8,
+            AutoMag = 0,
+            SemiAuto = 1,
+            Shotgun = 2,
+            BoltAction = 3,
+            Revolver = 4,
+            Sniper = 5,
+            HighYield = 6,
+            Energy = 7
+        }
+
+        public enum AmmoType
+        {
+            Generic = 0,
+            Magazine = 1,
+            AmmoLoader = 2,
+            SemiAuto = 3,
+            ShotgunShell = 4,
+            Revolver = 5,
+            Battery = 6,
+            Sniper = 7,
+            Explosive = 8
+        }
+
+        public enum ProjectileType
+        {
+            Pierce = 1,
+            Explosive = 2,
+            Energy = 3,
+            Blunt = 4,
+            HitScan = 5,
+            Sniper = 6
+        }
+
+        public enum AttachmentType
+        {
+            Flashlight = 1,
+            Laser = 2,
+            GrenadeLauncher = 3,
+        }
+
+        public static Array weaponTypeEnums = Enum.GetValues(typeof(WeaponType));
+
+        public static Array ammoTypeEnums = Enum.GetValues(typeof(AmmoType));
+
+        public static Array projectileTypeEnums = Enum.GetValues(typeof(ProjectileType));
+
+        public static Array attachmentTypeEnums = Enum.GetValues(typeof(AttachmentType));
+
         public enum FireMode
         {
             Misfire = 0,
@@ -52,12 +107,27 @@ namespace SimpleBallistics
 
         }
 
-
         public static bool Animate(Animator animator, string animationName)
         {
             if ((animator == null) || String.IsNullOrEmpty(animationName)) return false;
             animator.Play(animationName);
             return true;
+        }
+
+        public static bool IsAnimationPlaying(Animator animator, string animationName)
+        {
+            if ((animator == null) || String.IsNullOrEmpty(animationName)) return false;
+
+            try {
+                if (animator.GetCurrentAnimatorClipInfo(0)[0].clip.name.Contains(animationName)) return true;
+                else return false;
+            }
+            catch (Exception e)
+            {
+                Debug.Log("[Fisher-Firearms] Could not check animation: " + e.StackTrace);
+                return false;
+            }
+
         }
 
         public static Vector3 NpcAimingAngle(BrainHuman NPCBrain, Vector3 initial, float npcDistanceToFire = 10.0f)
@@ -84,30 +154,35 @@ namespace SimpleBallistics
 
         public static void ShootProjectile(Item shooterItem, string projectileID, Transform spawnPoint, string imbueSpell = null, float forceMult = 1.0f, float throwMult = 1.0f, bool pooled = false)
         {
-            var projectileData = Catalog.GetData<ItemPhysic>(projectileID, true);
-            if (projectileData == null)
+            ItemData spawnedItemData = Catalog.GetData<ItemData>(projectileID, true);
+            if (spawnedItemData == null) return;
+            spawnedItemData.SpawnAsync(i =>
             {
-                Debug.LogError("[Fisher-Firearms][ERROR] No projectile named " + projectileID.ToString());
-                return;
-            }
-            else
-            {
-                Item projectile = projectileData.Spawn(pooled);
-                if (!projectile.gameObject.activeInHierarchy) projectile.gameObject.SetActive(true);
-                shooterItem.IgnoreObjectCollision(projectile);
-                if (!String.IsNullOrEmpty(imbueSpell))
+                try
                 {
-                    // Set imbue charge on projectile using ItemProjectileSimple subclass
-                    ItemSimpleProjectile projectileController = projectile.gameObject.GetComponent<ItemSimpleProjectile>();
-                    if (projectileController != null) projectileController.AddChargeToQueue(imbueSpell);
+                    i.transform.position = spawnPoint.position;
+                    i.transform.rotation = Quaternion.Euler(spawnPoint.rotation.eulerAngles);
+                    shooterItem.IgnoreObjectCollision(i);
+                    i.ignoredItem = shooterItem;
+                    Physics.IgnoreCollision(shooterItem.colliderGroups[0].colliders[0], i.colliderGroups[0].colliders[0]);
+                    i.rb.velocity = shooterItem.rb.velocity;
+                    i.rb.AddForce(i.rb.transform.forward * 1000.0f * forceMult);
+                    //i.rb.useGravity = false;
+                    i.Throw(throwMult, Item.FlyDetection.CheckAngle);
+                    if (!String.IsNullOrEmpty(imbueSpell))
+                    {
+                        // Set imbue charge on projectile using ItemProjectileSimple subclass
+                        ItemSimpleProjectile projectileController = i.gameObject.GetComponent<ItemSimpleProjectile>();
+                        if (projectileController != null) projectileController.AddChargeToQueue(imbueSpell);
+                    }
                 }
-                // Match the Position, Rotation, & Speed of the spawner item
-                projectile.transform.position = spawnPoint.position;
-                projectile.transform.rotation = Quaternion.Euler(spawnPoint.rotation.eulerAngles);
-                projectile.rb.velocity = shooterItem.rb.velocity;
-                projectile.rb.AddForce(projectile.rb.transform.forward * 1000.0f * forceMult);
-                projectile.Throw(throwMult, Item.FlyDetection.CheckAngle);
-            }
+                catch { Debug.Log("[Fisher-Firearms] EXCEPTION IN SPAWNING ");
+                }
+            },
+            spawnPoint.position,
+            Quaternion.Euler(spawnPoint.rotation.eulerAngles),
+            null,
+            false);
         }
 
         public static string GetItemSpellChargeID(Item interactiveObject)
@@ -133,7 +208,69 @@ namespace SimpleBallistics
             yield return null;
         }
 
-        public static IEnumerator GeneralFire(TrackFiredDelegate TrackedFire, TriggerPressedDelegate TriggerPressed, FireMode fireSelector = FireMode.Single, int fireRate = 60, int burstNumber = 3, AudioSource emptySoundDriver = null, IsFiringDelegate WeaponIsFiring = null)
+        public static void DamageCreatureCustom(Creature triggerCreature, float damageApplied, Vector3 hitPoint)
+        {
+            try
+            {
+                if (triggerCreature.currentHealth > 0)
+                {
+                    MaterialData sourceMaterial = Catalog.GetData<MaterialData>("Metal", true);
+                    MaterialData targetMaterial = Catalog.GetData<MaterialData>("Flesh", true);
+
+                    DamageStruct damageStruct = new DamageStruct(DamageType.Pierce, damageApplied)
+                    {
+                        //materialEffectData = daggerEffectData
+                    };
+                    CollisionInstance collisionStruct = new CollisionInstance(damageStruct, (MaterialData)sourceMaterial, (MaterialData)targetMaterial)
+                    {
+                        contactPoint = hitPoint
+                    };
+                    triggerCreature.Damage(collisionStruct);
+
+                    if (collisionStruct.SpawnEffect(sourceMaterial, targetMaterial, false, out EffectInstance effectInstance))
+                    {
+                        effectInstance.Play();
+                    }
+                }
+            }
+            catch
+            {
+                //Debug.Log("[F-L42-RayCast][ERROR] Unable to damage enemy!");
+            }
+        }
+
+        public static IEnumerator AnimationLinkedFire(Animator Animator, string Animation, float flintlockDelay, int remainingAmmo, TrackFiredDelegate TrackedFire, TriggerPressedDelegate TriggerPressed, IsSpawningDelegate ProjectileIsSpawning = null, AudioSource emptySoundDriver = null, AudioSource secondaryFireSound = null, ParticleSystem secondaryMuzzleFlash = null)
+        {
+            if (remainingAmmo >= 1)
+            {
+                Animate(Animator, Animation);
+                do yield return null;
+                while (IsAnimationPlaying(Animator, Animation));
+            }
+
+            // wait for any previous projectiles
+            do yield return null;
+            while (ProjectileIsSpawning());
+
+            // Fire Success
+            if (TrackedFire())
+            {
+                yield return new WaitForSeconds(flintlockDelay);
+                if (secondaryFireSound != null) secondaryFireSound.Play();
+                if (secondaryMuzzleFlash != null) secondaryMuzzleFlash.Play();
+            }
+            // Fire Failure
+            else
+            {
+                if (emptySoundDriver != null) emptySoundDriver.Play();
+                yield return null;
+            }
+
+            yield return null;
+
+        }
+
+        public static IEnumerator GeneralFire(TrackFiredDelegate TrackedFire, TriggerPressedDelegate TriggerPressed, FireMode fireSelector = FireMode.Single, int fireRate = 60, int burstNumber = 3, AudioSource emptySoundDriver = null, IsFiringDelegate WeaponIsFiring = null, IsSpawningDelegate ProjectileIsSpawning = null)
         {
             WeaponIsFiring?.Invoke(true);
             float fireDelay = 60.0f / (float)fireRate;
@@ -146,6 +283,9 @@ namespace SimpleBallistics
 
             else if (fireSelector == FireMode.Single)
             {
+                do yield return null;
+                while (ProjectileIsSpawning());
+
                 if (!TrackedFire())
                 {
                     if (emptySoundDriver != null) emptySoundDriver.Play();
@@ -158,6 +298,10 @@ namespace SimpleBallistics
             {
                 for (int i = 0; i < burstNumber; i++)
                 {
+
+                    do yield return null;
+                    while (ProjectileIsSpawning());
+
                     if (!TrackedFire())
                     {
                         if (emptySoundDriver != null) emptySoundDriver.Play();
@@ -174,6 +318,9 @@ namespace SimpleBallistics
                 // triggerPressed is handled in OnHeldAction(), so stop firing once the trigger/weapon is released
                 while (TriggerPressed())
                 {
+                    do yield return null;
+                    while (ProjectileIsSpawning());
+
                     if (!TrackedFire())
                     {
                         if (emptySoundDriver != null) emptySoundDriver.Play();
@@ -189,75 +336,3 @@ namespace SimpleBallistics
 
     }
 }
-
-/*
-protected void DamageCreatureCustom(Creature triggerCreature, float damageApplied, Vector3 hitPoint)
-{
-    try
-    {
-        if (triggerCreature.health.currentHealth > 0)
-        {
-            Debug.Log("[F-L42-RayCast] Damaging enemy: " + triggerCreature.name);
-            Debug.Log("[F-L42-RayCast] Setting MaterialData... ");
-            MaterialData sourceMaterial = Catalog.GetData<MaterialData>("Metal", true); //(MaterialData)null; 
-            MaterialData targetMaterial = Catalog.GetData<MaterialData>("Flesh", true); //(MaterialData)null;
-            Debug.Log("[F-L42-RayCast] Fetching MaterialEffectData... ");
-            MaterialEffectData daggerEffectData = Catalog.GetData<MaterialEffectData>("DaggerPierce", true);
-
-            //Damager daggerDamager = new Damager();
-            //DamagerData daggerDamagerData = Catalog.GetData<DamagerData>("DaggerPierce", true);
-            //daggerDamager.Load(daggerDamagerData);
-            Debug.Log("[F-L42-RayCast] Defining DamageStruct... ");
-            DamageStruct damageStruct = new DamageStruct(DamageType.Pierce, damageApplied)
-            {
-                materialEffectData = daggerEffectData
-            };
-            Debug.Log("[F-L42-RayCast] Defining CollisionStruct... ");
-            CollisionStruct collisionStruct = new CollisionStruct(damageStruct, (MaterialData)sourceMaterial, (MaterialData)targetMaterial)
-            {
-                contactPoint = hitPoint
-            };
-            Debug.Log("[F-L42-RayCast] Applying Damage to creature... ");
-            triggerCreature.health.Damage(ref collisionStruct);
-            Debug.Log("[F-L42-RayCastFire] Damage Applied: " + damageApplied);
-
-            Debug.Log("[F-L42-RayCast] SpawnEffect... ");
-            if (collisionStruct.SpawnEffect(sourceMaterial, targetMaterial, false, out EffectInstance effectInstance))
-            {
-                effectInstance.Play();
-            }
-            Debug.Log("[F-L42-RayCastFire] Damage Applied: " + damageApplied);
-
-        }
-    }
-    catch
-    {
-        Debug.Log("[F-L42-RayCast][ERROR] Unable to damage enemy!");
-    }
-}
-
-public void RayCastFire()
-{
-    Debug.Log("[F-L42-RayCastFire] Called RayCastFire ... ");
-    var rayCastHit = Physics.Raycast(muzzlePoint.position, muzzlePoint.TransformDirection(Vector3.forward), out RaycastHit hit);
-    if (rayCastHit)
-    {
-        Debug.Log("[F-L42-RayCastFire] Hit! " + hit.transform.gameObject.name);
-        Debug.DrawRay(muzzlePoint.position, muzzlePoint.TransformDirection(Vector3.forward) * hit.distance, Color.red);
-        if (hit.collider.attachedRigidbody != null)
-        {
-            Debug.Log("[F-L42-RayCastFire] Hit Attached RigidBody ");
-            Debug.Log("[F-L42-RayCastFire] Force Applied to RB! ");
-            hit.collider.attachedRigidbody.AddForceAtPosition(muzzlePoint.TransformDirection(Vector3.forward) * module.hitForce, hit.point);
-            var targetCreature = hit.collider.attachedRigidbody.gameObject.GetComponent<Creature>();
-            if (targetCreature != null)
-            {
-                //Creature triggerCreature = hitPart.ragdoll.creature;
-                Debug.Log("[F-L42-RayCastFire] Creature Hit: " + targetCreature.name);
-                if (targetCreature == Creature.player) return;
-                DamageCreatureCustom(targetCreature, 20f, hit.point);
-            }
-        }
-    }
-}
-*/
