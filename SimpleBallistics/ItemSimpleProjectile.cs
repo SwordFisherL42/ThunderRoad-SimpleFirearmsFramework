@@ -7,7 +7,6 @@ using ThunderRoad;
  * via the AddChargeToQueue(...) method and defines an item lifetime for performance.
  * 
  * author: SwordFisherL42 ("Fisher")
- * date: 08/22/2020
  * 
  */
 
@@ -16,20 +15,24 @@ namespace SimpleBallistics
     public class ItemSimpleProjectile : MonoBehaviour
     {
         protected Item item;
-        protected ItemModuleSimpleProjectile module;
+        protected ProjectileModule module;
         protected string queuedSpell;
+        protected bool isFlying = false;
+        public string shooterItem = "";
 
         protected void Awake()
         {
             item = this.GetComponent<Item>();
-            module = item.data.GetModule<ItemModuleSimpleProjectile>();
+            module = item.data.GetModule<ProjectileModule>();
         }
 
         protected void Start()
         {
-            if (module.allowFlyTime) item.rb.useGravity = false;
+            if (module.allowFlyTime) {item.rb.useGravity = false; isFlying = true; }
             item.Despawn(module.lifetime);
         }
+
+        public void SetShooterItem(Item ShooterItem) { shooterItem = ShooterItem.name; }
 
         public void AddChargeToQueue(string SpellID)
         {
@@ -38,13 +41,15 @@ namespace SimpleBallistics
 
         private void LateUpdate()
         {
+            if (isFlying) item.rb.velocity = item.rb.velocity * module.flyingAcceleration;
             TransferImbueCharge(item, queuedSpell);
         }
 
         private void OnCollisionEnter(Collision hit)
         {
+            if (hit.gameObject.name.Contains(shooterItem)) return;
             if (item.rb.useGravity) return;
-            else item.rb.useGravity = true;
+            else { item.rb.useGravity = true; isFlying = false; }
         }
 
         private void TransferImbueCharge(Item imbueTarget, string spellID)
