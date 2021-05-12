@@ -1,5 +1,5 @@
 ﻿using ThunderRoad;
-using static SimpleBallistics.FirearmFunctions;
+using static SimpleBallistics.FrameworkCore;
 
 namespace SimpleBallistics
 {
