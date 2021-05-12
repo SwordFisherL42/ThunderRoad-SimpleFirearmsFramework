@@ -3,6 +3,9 @@ A custom ballistics framework for the VR game 'Blade &amp; Sorcery'. Designed to
 
 ## Changelog
 
+====Version 1.9.1====
+- Updated mod framework for Game Version U9.3
+
 ====Version 1.9.0====
 - Updated mod framework for Game Version U9.2
 
