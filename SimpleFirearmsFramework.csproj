@@ -84,7 +84,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="FrameworkCore.cs" />
-    <Compile Include="ItemMagicFirearm.cs" />
+    <Compile Include="ItemSimpleFirearm.cs" />
     <Compile Include="ItemModuleMagicFirearm.cs" />
     <Compile Include="ItemSimpleProjectile.cs" />
     <Compile Include="ProjectileModule.cs" />

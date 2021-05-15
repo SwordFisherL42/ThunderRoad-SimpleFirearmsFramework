@@ -15,7 +15,7 @@ using static SimpleBallistics.FrameworkCore;
 
 namespace SimpleBallistics
 {
-    public class ItemMagicFirearm : MonoBehaviour
+    public class ItemSimpleFirearm : MonoBehaviour
     {
         //  ThunderRoad references
         protected Item item;
