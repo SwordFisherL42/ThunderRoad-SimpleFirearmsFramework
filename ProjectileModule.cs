@@ -1,5 +1,5 @@
 ﻿using ThunderRoad;
-using static SimpleBallistics.FirearmFunctions;
+using static SimpleBallistics.FrameworkCore;
 
 namespace SimpleBallistics
 {
@@ -22,6 +22,7 @@ namespace SimpleBallistics
             base.OnItemLoaded(item);
             selectedType = (ProjectileType)weaponTypeEnums.GetValue(projectileType);
             if (selectedType.Equals(ProjectileType.Pierce)) item.gameObject.AddComponent<ItemSimpleProjectile>();
+            // TODO: Add additional projectile types in future versions
             //else if (selectedType.Equals(ProjectileType.Explosive)) item.gameObject.AddComponent<Weapons.SimpleExplosive>();
             //else if (selectedType.Equals(ProjectileType.Energy)) item.gameObject.AddComponent<Weapons.PlasmaBolt>();
         }

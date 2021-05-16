@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using ThunderRoad;
-using static SimpleBallistics.FirearmFunctions;
+using static SimpleBallistics.FrameworkCore;
 
 
 /* Description: An Item plugin for `ThunderRoad` which provides the basic functionality needed
@@ -15,7 +15,7 @@ using static SimpleBallistics.FirearmFunctions;
 
 namespace SimpleBallistics
 {
-    public class ItemMagicFirearm : MonoBehaviour
+    public class ItemSimpleFirearm : MonoBehaviour
     {
         //  ThunderRoad references
         protected Item item;
@@ -77,38 +77,38 @@ namespace SimpleBallistics
             }
             catch
             {
-                Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"muzzlePositionRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.muzzlePositionRef));
+                Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"muzzlePositionRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.muzzlePositionRef));
                 muzzlePoint = item.transform;
             }
 
             //  Fetch Animator, ParticleSystem, and AudioSources from Custom References (see "How-To Guide" for more info on custom references)
 
             try { if (!string.IsNullOrEmpty(module.fireSoundRef)) fireSound = item.GetCustomReference(module.fireSoundRef).GetComponent<AudioSource>(); }
-            catch { Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"fireSoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.fireSoundRef)); }
+            catch { Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"fireSoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.fireSoundRef)); }
             
             try { if (!string.IsNullOrEmpty(module.emptySoundRef)) emptySound = item.GetCustomReference(module.emptySoundRef).GetComponent<AudioSource>(); }
-            catch { Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"emptySoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.emptySoundRef)); }
+            catch { Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"emptySoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.emptySoundRef)); }
 
             try { if (!string.IsNullOrEmpty(module.reloadSoundRef)) reloadSound = item.GetCustomReference(module.reloadSoundRef).GetComponent<AudioSource>(); }
-            catch { Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"reloadSoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.reloadSoundRef)); }
+            catch { Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"reloadSoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.reloadSoundRef)); }
 
             try { if (!string.IsNullOrEmpty(module.swtichSoundRef)) switchSound = item.GetCustomReference(module.swtichSoundRef).GetComponent<AudioSource>(); }
-            catch { Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"swtichSoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.swtichSoundRef)); }
+            catch { Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"swtichSoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.swtichSoundRef)); }
 
             try { if (!string.IsNullOrEmpty(module.npcRaycastPositionRef)) npcRayCastPoint = item.GetCustomReference(module.npcRaycastPositionRef); }
-            catch { Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"npcRaycastPositionRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.npcRaycastPositionRef)); }
+            catch { Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"npcRaycastPositionRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.npcRaycastPositionRef)); }
 
             try { if (!string.IsNullOrEmpty(module.muzzleFlashRef)) MuzzleFlash = item.GetCustomReference(module.muzzleFlashRef).GetComponent<ParticleSystem>(); }
-            catch { Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"muzzleFlashRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.muzzleFlashRef)); }
+            catch { Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"muzzleFlashRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.muzzleFlashRef)); }
 
             try { if (!string.IsNullOrEmpty(module.animatorRef)) Animations = item.GetCustomReference(module.animatorRef).GetComponent<Animator>(); }
-            catch { Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"animatorRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.animatorRef)); }
+            catch { Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"animatorRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.animatorRef)); }
 
             try { if (!string.IsNullOrEmpty(module.earlyFireSoundRef)) earlyFireSound = item.GetCustomReference(module.earlyFireSoundRef).GetComponent<AudioSource>(); }
-            catch { Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"secondaryFireSound\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.earlyFireSoundRef)); }
+            catch { Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"secondaryFireSound\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.earlyFireSoundRef)); }
 
             try { if (!string.IsNullOrEmpty(module.earlyMuzzleFlashRef)) earlyMuzzleFlash = item.GetCustomReference(module.earlyMuzzleFlashRef).GetComponent<ParticleSystem>(); }
-            catch { Debug.LogError(string.Format("[Fisher-SimpleBallistics] Exception: '\"secondaryMuzzleFlashRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.earlyMuzzleFlashRef)); }
+            catch { Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"secondaryMuzzleFlashRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.earlyMuzzleFlashRef)); }
 
             if (npcRayCastPoint == null) { npcRayCastPoint = muzzlePoint; }
 
@@ -185,7 +185,7 @@ namespace SimpleBallistics
                     if (module.allowCycleFireMode && !isEmpty)
                     {
                         if (emptySound != null) emptySound.Play();
-                        fireModeSelection = FirearmFunctions.CycleFireMode(fireModeSelection, allowedFireModes);
+                        fireModeSelection = FrameworkCore.CycleFireMode(fireModeSelection, allowedFireModes);
                         //SetFireSelectionAnimator(Animations, fireModeSelection);
                     }
                     else if (isEmpty)
@@ -299,7 +299,7 @@ namespace SimpleBallistics
                         && target.faction.attackBehaviour != GameData.Faction.AttackBehaviour.Ignored && (thisNPC.faction.attackBehaviour == GameData.Faction.AttackBehaviour.Agressive || thisNPC.factionId != target.factionId))
                     {
                         Fire(true);
-                        FirearmFunctions.DamageCreatureCustom(target, module.npcDamageToPlayer, hit.point);
+                        FrameworkCore.DamageCreatureCustom(target, module.npcDamageToPlayer, hit.point);
                         //npcShootDelay = UnityEngine.Random.Range(thisNPCBrain.bowAimMinMaxDelay.x, thisNPCBrain.bowAimMinMaxDelay.y) * ((thisNPCBrain.bowDist / module.npcDistanceToFire + hit.distance / module.npcDistanceToFire) / thisNPCBrain.bowDist);
                         npcShootDelay = UnityEngine.Random.Range(thisNPCBrain.bowAimMinMaxDelay.x, thisNPCBrain.bowAimMinMaxDelay.y);
                     }

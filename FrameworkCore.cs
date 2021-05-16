@@ -16,7 +16,7 @@ namespace SimpleBallistics
 
     public delegate bool IsSpawningDelegate();
 
-    public class FirearmFunctions
+    public class FrameworkCore
     {
 
         public enum WeaponType

@@ -60,7 +60,7 @@ namespace SimpleBallistics
             {
                 try
                 {
-                    StartCoroutine(FirearmFunctions.TransferDeltaEnergy(itemImbue, transferedSpell));
+                    StartCoroutine(FrameworkCore.TransferDeltaEnergy(itemImbue, transferedSpell));
                     queuedSpell = null;
                     return;
                 }

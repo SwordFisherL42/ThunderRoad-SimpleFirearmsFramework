@@ -5,26 +5,30 @@ namespace SimpleBallistics
     public class ItemModuleMagicFirearm : ItemModule
     {
         // Unity prefab references
-        public string projectileID;
         public string muzzlePositionRef;
+        public string muzzleFlashRef;
+        public string fireSoundRef;
+        public string emptySoundRef;
+        public string swtichSoundRef;
+        public string reloadSoundRef;
+        public string animatorRef;
+        public string fireAnim;
+        public string emptyAnim;
+        public string reloadAnim;
+        //public string shellEjectionRef;
+
+        // Item definition references
+        public string mainGripID;
+        public string projectileID;
+
         // NPC settings
         public string npcRaycastPositionRef;
         public float npcDistanceToFire = 10.0f;
         public bool npcMeleeEnableFlag = true;
         public float npcDamageToPlayer = 1.0f;
-        //public string shellEjectionRef;
-        public bool loopedFireSound = false;
-        public string fireSoundRef;
-        public string emptySoundRef;
-        public string swtichSoundRef;
-        public string reloadSoundRef;
-        public string muzzleFlashRef;
-        public string animatorRef;
-        public string fireAnim;
-        public string emptyAnim;
-        public string reloadAnim;
-        public string mainGripID;
+
         // Custom Behaviour Settings
+        public bool loopedFireSound = false;
         public int ammoCapacity = 0;
         public bool allowCycleFireMode = false;
         public int fireMode = 1;
@@ -39,10 +43,10 @@ namespace SimpleBallistics
         public float[] recoilTorques = { 500f, 700f, 0f, 0f, 0f, 0f }; // x-min, x-max, y-min, y-max, z-min, z-max
         public float[] recoilForces = { 0f, 0f, 600f, 800f, -3000f, -2000f };  // x-min, x-max, y-min, y-max, z-min, z-max
 
-        // Settings added in 1.6.0 - 1.7.1
+        // Flintlock weapon settings
+        public bool isFlintlock = false;        // Set weapon to Flintlock mode
         public bool waitForReloadAnim = false;  // Do not allow actions while Reload Animation is playing
         public bool waitForFireAnim = false;    // Wait for the Fire animation to finish before shooting the projectile/playing primary effects
-        public bool isFlintlock = false;        // Set weapon to Flintlock mode
         public string earlyFireSoundRef;        // First sound played (flintlock activation)
         public string earlyMuzzleFlashRef;      // First particle played (flintlock activation)
         public float flintlockDelay = 1.0f;     // Delay between PreFire effects and actual Fire (with main fire effects)
@@ -50,7 +54,7 @@ namespace SimpleBallistics
         public override void OnItemLoaded(Item item)
         {
             base.OnItemLoaded(item);
-            item.gameObject.AddComponent<ItemMagicFirearm>();
+            item.gameObject.AddComponent<ItemSimpleFirearm>();
         }
     }
 }

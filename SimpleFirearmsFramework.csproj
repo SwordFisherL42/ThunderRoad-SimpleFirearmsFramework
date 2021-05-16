@@ -83,8 +83,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="FirearmFunctions.cs" />
-    <Compile Include="ItemMagicFirearm.cs" />
+    <Compile Include="FrameworkCore.cs" />
+    <Compile Include="ItemSimpleFirearm.cs" />
     <Compile Include="ItemModuleMagicFirearm.cs" />
     <Compile Include="ItemSimpleProjectile.cs" />
     <Compile Include="ProjectileModule.cs" />
