@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using ThunderRoad;
@@ -18,31 +17,30 @@ namespace SimpleBallistics
     public class ItemSimpleFirearm : MonoBehaviour
     {
         //  ThunderRoad references
-        protected Item item;
-        protected ItemModuleMagicFirearm module;
-        private Handle gunGrip;
+        Item item;
+        ItemModuleMagicFirearm module;
+        Handle gunGrip;
         //  Unity references
-        private Animator Animations;
-        private Transform muzzlePoint;
-        private Transform npcRayCastPoint;
-        private ParticleSystem MuzzleFlash;
-        private ParticleSystem earlyMuzzleFlash;
-        private AudioSource fireSound;
-        private AudioSource emptySound;
-        private AudioSource switchSound;
-        private AudioSource reloadSound;
-        private AudioSource earlyFireSound;
+        Animator Animations;
+        Transform muzzlePoint;
+        Transform npcRayCastPoint;
+        ParticleSystem MuzzleFlash;
+        ParticleSystem earlyMuzzleFlash;
+        AudioSource fireSound;
+        AudioSource emptySound;
+        AudioSource switchSound;
+        AudioSource reloadSound;
+        AudioSource earlyFireSound;
         //  Weapon logic references
-        private FireMode fireModeSelection;
-        private List<int> allowedFireModes;
-        private int remaingingAmmo;
-        private bool infAmmo = false;
-        private bool isEmpty = false;
-        private bool triggerPressed;
-        private bool gunGripHeldLeft;
-        private bool gunGripHeldRight;
-        public bool isFiring;
-        public bool currentlySpawningProjectile;
+        FireMode fireModeSelection;
+        List<int> allowedFireModes;
+        int remaingingAmmo;
+        bool infAmmo = false;
+        bool isEmpty = false;
+        bool triggerPressed;
+        bool gunGripHeldLeft;
+        bool gunGripHeldRight;
+        bool isFiring;
         //  NPC control logic
         Creature thisNPC;
         BrainData thisNPCBrain;
@@ -51,23 +49,9 @@ namespace SimpleBallistics
         BrainModuleParry BrainParry;
         float npcShootDelay;
 
-        public void IgnoreProjectile(Item i, bool ignore=true) {
-            foreach (ColliderGroup colliderGroup in this.item.colliderGroups)
-            {
-                foreach (Collider collider in colliderGroup.colliders)
-                {
-                    foreach (ColliderGroup colliderGroupProjectile in i.colliderGroups) {
-                        foreach (Collider colliderProjectile in colliderGroupProjectile.colliders) {
-                            Physics.IgnoreCollision(collider, colliderProjectile, ignore);
-                        }
-                    }
-                }
-            }
-        }
-
-        public void Awake()
-        {
-            item = this.GetComponent<Item>();
+        void Awake()
+        {   // TODO: clean up Awake references
+            item = GetComponent<Item>();
             module = item.data.GetModule<ItemModuleMagicFirearm>();
             try
             {
@@ -80,33 +64,31 @@ namespace SimpleBallistics
                 muzzlePoint = item.transform;
             }
             //  Fetch Animator, ParticleSystem, and AudioSources from Custom References (see "How-To Guide" for more info on custom references)
-            if (!String.IsNullOrEmpty(module.fireSoundRef)) fireSound = item.GetCustomReference(module.fireSoundRef).GetComponent<AudioSource>();
+            if (!string.IsNullOrEmpty(module.fireSoundRef)) fireSound = item.GetCustomReference(module.fireSoundRef).GetComponent<AudioSource>();
             else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"fireSoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.fireSoundRef));
-            if (!String.IsNullOrEmpty(module.emptySoundRef)) emptySound = item.GetCustomReference(module.emptySoundRef).GetComponent<AudioSource>();
+            if (!string.IsNullOrEmpty(module.emptySoundRef)) emptySound = item.GetCustomReference(module.emptySoundRef).GetComponent<AudioSource>();
             else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"emptySoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.emptySoundRef));
-            if (!String.IsNullOrEmpty(module.reloadSoundRef)) reloadSound = item.GetCustomReference(module.reloadSoundRef).GetComponent<AudioSource>();
+            if (!string.IsNullOrEmpty(module.reloadSoundRef)) reloadSound = item.GetCustomReference(module.reloadSoundRef).GetComponent<AudioSource>();
             else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"reloadSoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.reloadSoundRef));
-            if (!String.IsNullOrEmpty(module.swtichSoundRef)) switchSound = item.GetCustomReference(module.swtichSoundRef).GetComponent<AudioSource>();
+            if (!string.IsNullOrEmpty(module.swtichSoundRef)) switchSound = item.GetCustomReference(module.swtichSoundRef).GetComponent<AudioSource>();
             else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"swtichSoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.swtichSoundRef));
-            if (!String.IsNullOrEmpty(module.npcRaycastPositionRef)) npcRayCastPoint = item.GetCustomReference(module.npcRaycastPositionRef);
+            if (!string.IsNullOrEmpty(module.npcRaycastPositionRef)) npcRayCastPoint = item.GetCustomReference(module.npcRaycastPositionRef);
             else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"npcRaycastPositionRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.npcRaycastPositionRef));
-            if (!String.IsNullOrEmpty(module.muzzleFlashRef)) MuzzleFlash = item.GetCustomReference(module.muzzleFlashRef).GetComponent<ParticleSystem>();
+            if (!string.IsNullOrEmpty(module.muzzleFlashRef)) MuzzleFlash = item.GetCustomReference(module.muzzleFlashRef).GetComponent<ParticleSystem>();
             else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"muzzleFlashRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.muzzleFlashRef));
-            if (!String.IsNullOrEmpty(module.animatorRef)) Animations = item.GetCustomReference(module.animatorRef).GetComponent<Animator>();
+            if (!string.IsNullOrEmpty(module.animatorRef)) Animations = item.GetCustomReference(module.animatorRef).GetComponent<Animator>();
             else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"animatorRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.animatorRef));
-            if (!String.IsNullOrEmpty(module.earlyFireSoundRef)) earlyFireSound = item.GetCustomReference(module.earlyFireSoundRef).GetComponent<AudioSource>();
+            if (!string.IsNullOrEmpty(module.earlyFireSoundRef)) earlyFireSound = item.GetCustomReference(module.earlyFireSoundRef).GetComponent<AudioSource>();
             else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"secondaryFireSound\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.earlyFireSoundRef));
-            if (!String.IsNullOrEmpty(module.earlyMuzzleFlashRef)) earlyMuzzleFlash = item.GetCustomReference(module.earlyMuzzleFlashRef).GetComponent<ParticleSystem>();
+            if (!string.IsNullOrEmpty(module.earlyMuzzleFlashRef)) earlyMuzzleFlash = item.GetCustomReference(module.earlyMuzzleFlashRef).GetComponent<ParticleSystem>();
             else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"secondaryMuzzleFlashRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.earlyMuzzleFlashRef));
             if (npcRayCastPoint == null) { npcRayCastPoint = muzzlePoint; }
             // Setup ammo tracking 
-            if (module.ammoCapacity > 0) remaingingAmmo = (int)module.ammoCapacity;
+            if (module.ammoCapacity > 0) remaingingAmmo = module.ammoCapacity;
             else infAmmo = true;
             // Override SFX volume from JSON
-            if ((module.soundVolume > 0.0f) && (module.soundVolume <= 1.0f))
-            {
-                if (fireSound != null) fireSound.volume = module.soundVolume;
-            }
+            if ((fireSound != null) && (module.soundVolume > 0.0f) && (module.soundVolume <= 1.0f))
+                fireSound.volume = module.soundVolume;
             if (module.loopedFireSound) fireSound.loop = true;
             // Get firemode based on numeric index of the enum
             fireModeSelection = (FireMode)fireModeEnums.GetValue(module.fireMode);
@@ -115,8 +97,7 @@ namespace SimpleBallistics
             item.OnHeldActionEvent += OnHeldAction;
             if (!string.IsNullOrEmpty(module.mainGripID)) gunGrip = item.GetCustomReference(module.mainGripID).GetComponent<Handle>();
             if (gunGrip == null)
-            {
-                // If not defined, get the first handle named "Handle", and if still not found try to get the first object with a Handle component
+            {   // If not defined, get the first handle named "Handle", and if still not found try to get the first object with a Handle component
                 gunGrip = item.transform.Find("Handle").GetComponent<Handle>();
                 if (gunGrip == null) gunGrip = item.GetComponentInChildren<Handle>();
             }
@@ -127,56 +108,49 @@ namespace SimpleBallistics
             }
         }
 
-        public void OnHeldAction(RagdollHand interactor, Handle handle, Interactable.Action action)
+        void OnHeldAction(RagdollHand interactor, Handle handle, Interactable.Action action)
         {
-            if (handle.Equals(gunGrip))
+            if (!handle.Equals(gunGrip)) return;
+            if (action == Interactable.Action.UseStart)
             {
-                if (action == Interactable.Action.UseStart)
+                if (module.waitForReloadAnim && IsAnimationPlaying(Animations, module.reloadAnim)) return;
+                triggerPressed = true;
+                if (module.isFlintlock)
+                    StartCoroutine(FlintlockLinkedFire());
+                else if (!isFiring)
+                    StartCoroutine(
+                        GeneralFire(
+                            TrackedFire,
+                            TriggerIsPressed, 
+                            fireModeSelection, 
+                            module.fireRate, 
+                            module.burstNumber, 
+                            emptySound, 
+                            SetFiringFlag));
+            }
+            if (action == Interactable.Action.UseStop || action == Interactable.Action.Ungrab)
+                triggerPressed = false;  // Stop Firing.
+            if (action == Interactable.Action.AlternateUseStart)
+            {
+                if (module.waitForReloadAnim && IsAnimationPlaying(Animations, module.reloadAnim)) return;
+                if (module.allowCycleFireMode && !isEmpty)
                 {
-                    if (module.waitForReloadAnim && IsAnimationPlaying(Animations, module.reloadAnim)) return;
-
-                    triggerPressed = true;
-                    if (module.isFlintlock)
-                    {
-                        StartCoroutine(FlintlockLinkedFire());
-                    }
-                    else if (!isFiring) StartCoroutine(GeneralFire(TrackedFire, TriggerIsPressed, fireModeSelection, module.fireRate, module.burstNumber, emptySound, SetFiringFlag, ProjectileIsSpawning));
+                    if (emptySound != null) emptySound.Play();
+                    fireModeSelection = CycleFireMode(fireModeSelection, allowedFireModes);
                 }
-                if (action == Interactable.Action.UseStop || action == Interactable.Action.Ungrab)
-                {
-                    // Stop Firing.
-                    triggerPressed = false;
-                }
-                if (action == Interactable.Action.AlternateUseStart)
-                {
-                    if (module.waitForReloadAnim && IsAnimationPlaying(Animations, module.reloadAnim)) return;
-
-                    if (module.allowCycleFireMode && !isEmpty)
-                    {
-                        if (emptySound != null) emptySound.Play();
-                        fireModeSelection = FrameworkCore.CycleFireMode(fireModeSelection, allowedFireModes);
-                        //SetFireSelectionAnimator(Animations, fireModeSelection);
-                    }
-                    else if (isEmpty)
-                    {
-                        // Reload the weapon
-                        ReloadWeapon();
-                    }
-                }
+                else if (isEmpty)
+                    ReloadWeapon();
             }
         }
 
-        public void OnMainGripGrabbed(RagdollHand interactor, Handle handle, EventTime eventTime)
+        void OnMainGripGrabbed(RagdollHand interactor, Handle handle, EventTime eventTime)
         {
             if (interactor.playerHand == Player.local.handRight) gunGripHeldRight = true;
             if (interactor.playerHand == Player.local.handLeft) gunGripHeldLeft = true;
-
             if (!gunGripHeldLeft && !gunGripHeldRight)
             {
                 if (isEmpty)
-                {
                     ReloadWeapon();
-                }
                 thisNPC = interactor.ragdoll.creature;
                 thisNPCBrain = thisNPC.brain.instance;
                 BrainBow = thisNPCBrain.GetModule<BrainModuleBow>();
@@ -184,16 +158,14 @@ namespace SimpleBallistics
                 BrainParry = thisNPCBrain.GetModule<BrainModuleParry>();
                 thisNPC.brain.currentTarget = Player.local.creature;
                 thisNPC.brain.isParrying = true;
-
                 BrainMelee.meleeEnabled = module.npcMeleeEnableOverride;
             }
         }
 
-        public void OnMainGripUnGrabbed(RagdollHand interactor, Handle handle, EventTime eventTime)
+        void OnMainGripUnGrabbed(RagdollHand interactor, Handle handle, EventTime eventTime)
         {
             if (interactor.playerHand == Player.local.handRight) gunGripHeldRight = false;
             if (interactor.playerHand == Player.local.handLeft) gunGripHeldLeft = false;
-
             if (thisNPC != null)
             {
                 thisNPC = null;
@@ -204,7 +176,7 @@ namespace SimpleBallistics
             }
         }
 
-        public void LateUpdate()
+        void LateUpdate()
         {
             if (module.loopedFireSound)
             {
@@ -217,8 +189,6 @@ namespace SimpleBallistics
             }
             if (BrainParry != null)
             {
-                //BrainParry.StartParry(Player.currentCreature); 
-                //if (thisNPC.brain.currentTarget == null && thisNPC.factionId != Player.currentCreature.factionId) thisNPC.brain.currentTarget = Player.currentCreature;
                 if (thisNPC.brain.currentTarget != null) {
                     BrainParry.StartParry(thisNPC.brain.currentTarget);
                     if (!module.npcMeleeEnableOverride)
@@ -228,27 +198,35 @@ namespace SimpleBallistics
                 }
             }
             if (npcShootDelay > 0) npcShootDelay -= Time.deltaTime;
-            if (npcShootDelay <= 0) { NPCshoot(); }
+            if (npcShootDelay <= 0) { NPCFire(); }
         }
 
-        private void ReloadWeapon()
+        void ReloadWeapon()
         {
             if (module.waitForReloadAnim && IsAnimationPlaying(Animations, module.reloadAnim)) return;
-
-            if (reloadSound != null) reloadSound.Play();
-
+            reloadSound?.Play();
             Animate(Animations, module.reloadAnim);
-
             remaingingAmmo = module.ammoCapacity;
             isEmpty = false;
         }
 
-        public void SetFiringFlag(bool status)
-        {
-            isFiring = status;
+        void SetFiringFlag(bool status) { isFiring = status; }
+
+        bool TriggerIsPressed() { return triggerPressed; }
+
+        bool TrackedFire()
+        {   // Returns 'true' if Fire was successful.
+            if (isEmpty) return false;
+            if (infAmmo || remaingingAmmo > 0)
+            {
+                Fire();
+                remaingingAmmo--;
+                return true;
+            }
+            return false;
         }
 
-        private void NPCshoot()
+        void NPCFire()
         {
             if (thisNPC != null && thisNPCBrain != null && thisNPC.brain.currentTarget != null)
             {
@@ -257,43 +235,35 @@ namespace SimpleBallistics
                 {
                     Creature target = null;
                     if (hit.collider.transform.root.name.Contains("Player") || hit.collider.transform.root.name.Contains("Pool_Human"))
-                    {
                         target = hit.collider.transform.root.GetComponentInChildren<Creature>();
-                    }
-
                     if (target != null && thisNPC != target
-                        && thisNPC.faction.attackBehaviour != GameData.Faction.AttackBehaviour.Ignored && thisNPC.faction.attackBehaviour != GameData.Faction.AttackBehaviour.Passive
-                        && target.faction.attackBehaviour != GameData.Faction.AttackBehaviour.Ignored && (thisNPC.faction.attackBehaviour == GameData.Faction.AttackBehaviour.Agressive || thisNPC.factionId != target.factionId))
+                        && thisNPC.faction.attackBehaviour != GameData.Faction.AttackBehaviour.Ignored
+                        && thisNPC.faction.attackBehaviour != GameData.Faction.AttackBehaviour.Passive
+                        && target.faction.attackBehaviour != GameData.Faction.AttackBehaviour.Ignored
+                        && (thisNPC.faction.attackBehaviour == GameData.Faction.AttackBehaviour.Agressive || thisNPC.factionId != target.factionId))
                     {
                         Fire(true);
-                        FrameworkCore.DamageCreatureCustom(target, module.npcDamageToPlayer, hit.point);
+                        DamageCreatureCustom(target, module.npcDamageToPlayer, hit.point);
                         npcShootDelay = UnityEngine.Random.Range(BrainBow.bowAimMinMaxDelay.x, BrainBow.bowAimMinMaxDelay.y);
                     }
                 }
             }
         }
 
-        public bool TriggerIsPressed() { return triggerPressed; }
-
-        public bool ProjectileIsSpawning() { return currentlySpawningProjectile; }
-
-        public void PreFireEffects()
+        void PreFireEffects()
         {
-            if (MuzzleFlash != null) MuzzleFlash.Play();
+            MuzzleFlash?.Play();
             if (remaingingAmmo == 1)
-            {
-                // Last Shot
+            {   // Last Shot
                 Animate(Animations, module.emptyAnim);
                 isEmpty = true;
             }
             else
-            {
                 Animate(Animations, module.fireAnim);
-            }
-            if (!module.loopedFireSound && fireSound != null) fireSound.Play();
+            if (!module.loopedFireSound) fireSound?.Play();
         }
 
-        private void Fire(bool firedByNPC = false, bool playEffects = true)
+        void Fire(bool firedByNPC = false, bool playEffects = true)
         {
             if (playEffects) PreFireEffects();
             if (firedByNPC) return;
@@ -301,29 +271,10 @@ namespace SimpleBallistics
             ApplyRecoil(item.rb, module.recoilForces, module.recoilMult, gunGripHeldLeft, gunGripHeldRight, module.hapticForce, module.recoilTorques);
         }
 
-        public bool TrackedFlintlockFire()
-        {
-            if (isEmpty) return false;
-            if (infAmmo || remaingingAmmo > 0)
-            {
-                if (MuzzleFlash != null) MuzzleFlash.Play();
-                if (fireSound != null) fireSound.Play();
-                if (remaingingAmmo == 1)
-                {
-                    isEmpty = true;
-                }
-                Fire(false, false);
-                remaingingAmmo--;
-                return true;
-            }
-            return false;
-        }
-
-        public IEnumerator FlintlockLinkedFire()
-        {
-            // Fire Success
+        IEnumerator FlintlockLinkedFire()
+        { // TODO: Abstract FlintlockLinkedFire into FrameworkCore
             if (!isEmpty && (infAmmo || remaingingAmmo > 0))
-            {
+            {   // Fire Success
                 Animate(Animations, module.fireAnim);
                 if (module.waitForFireAnim)
                 {
@@ -341,35 +292,13 @@ namespace SimpleBallistics
                 Fire();
                 remaingingAmmo--;
             }
-            // Fire Failure
             else
-            {
+            {   // Fire Failure
                 if (emptySound != null) emptySound.Play();
                 yield return null;
             }
-
             yield return null;
-
         }
-
-        private IEnumerator FlintlockFireDelay(bool waitForFireAnim, float secondaryDelay)
-        {
-
-            yield return new WaitForSeconds(secondaryDelay);
-        }
-
-        public bool TrackedFire()
-        {
-            // Returns 'true' if Fire was successful.
-            if (isEmpty) return false;
-            if (infAmmo || remaingingAmmo > 0)
-            {
-                Fire();
-                remaingingAmmo--;
-                return true;
-            }
-            return false;
-        }
-
     }
+
 }
