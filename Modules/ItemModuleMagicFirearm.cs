@@ -16,7 +16,7 @@ namespace SimpleBallistics
         public string fireAnim;
         public string emptyAnim;
         public string reloadAnim;
-        //public string shellEjectionRef;
+        //public string shellEjectionRef; // TODO: Particle system shell casings
 
         // Item definition references
         public string mainGripID;
