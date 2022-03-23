@@ -12,13 +12,14 @@ using ThunderRoad;
 
 namespace SimpleBallistics
 {
-    public class ItemSimpleProjectile : MonoBehaviour
+    public class SimpleProjectile : MonoBehaviour
     {
         protected Item item;
         protected ProjectileModule module;
         protected string queuedSpell;
         protected bool isFlying = false;
-        public string shooterItem = "";
+        public string shooterItemString = "";
+        public Item shooterItem;
 
         protected void Awake()
         {
@@ -28,11 +29,11 @@ namespace SimpleBallistics
 
         protected void Start()
         {
-            if (module.allowFlyTime) {item.rb.useGravity = false; isFlying = true; }
+            if (module.allowFlyTime) { item.rb.useGravity = false; isFlying = true; }
             item.Despawn(module.lifetime);
         }
 
-        public void SetShooterItem(Item ShooterItem) { shooterItem = ShooterItem.name; }
+        public void SetShooterItem(Item ShooterItemIn) { shooterItemString = ShooterItemIn.name; shooterItem = ShooterItemIn; }
 
         public void AddChargeToQueue(string SpellID)
         {
@@ -47,7 +48,7 @@ namespace SimpleBallistics
 
         private void OnCollisionEnter(Collision hit)
         {
-            if (hit.gameObject.name.Contains(shooterItem)) return;
+            if (hit.gameObject.name.Contains(shooterItemString)) return;
             if (item.rb.useGravity) return;
             else { item.rb.useGravity = true; isFlying = false; }
         }

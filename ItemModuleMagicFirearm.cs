@@ -4,6 +4,7 @@ namespace SimpleBallistics
 {
     public class ItemModuleMagicFirearm : ItemModule
     {
+        public bool verbose_logging = false;
         // Unity prefab references
         public string muzzlePositionRef;
         public string muzzleFlashRef;
@@ -24,8 +25,10 @@ namespace SimpleBallistics
         // NPC settings
         public string npcRaycastPositionRef;
         public float npcDistanceToFire = 10.0f;
-        public bool npcMeleeEnableFlag = true;
+        public bool npcMeleeEnableOverride = true;
         public float npcDamageToPlayer = 1.0f;
+        public float npcDetectionRadius = 100f;
+        public float npcMeleeEnableDistance = 0.5f;
 
         // Custom Behaviour Settings
         public bool loopedFireSound = false;
@@ -35,7 +38,7 @@ namespace SimpleBallistics
         public int[] allowedFireModes;
         public int burstNumber = 3;
         public int fireRate = 400;
-        public float bulletForce = 7.0f;
+        public float bulletForce = 10.0f;
         public float recoilMult = 1.0f;
         public float soundVolume;
         public float hapticForce = 4.0f;

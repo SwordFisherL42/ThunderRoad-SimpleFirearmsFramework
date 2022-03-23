@@ -62,14 +62,6 @@ namespace SimpleBallistics
             GrenadeLauncher = 3,
         }
 
-        public static Array weaponTypeEnums = Enum.GetValues(typeof(WeaponType));
-
-        public static Array ammoTypeEnums = Enum.GetValues(typeof(AmmoType));
-
-        public static Array projectileTypeEnums = Enum.GetValues(typeof(ProjectileType));
-
-        public static Array attachmentTypeEnums = Enum.GetValues(typeof(AttachmentType));
-
         public enum FireMode
         {
             Misfire = 0,
@@ -77,6 +69,14 @@ namespace SimpleBallistics
             Burst = 2,
             Auto = 3
         }
+
+        public static Array weaponTypeEnums = Enum.GetValues(typeof(WeaponType));
+
+        public static Array ammoTypeEnums = Enum.GetValues(typeof(AmmoType));
+
+        public static Array projectileTypeEnums = Enum.GetValues(typeof(ProjectileType));
+
+        public static Array attachmentTypeEnums = Enum.GetValues(typeof(AttachmentType));
 
         public static Array fireModeEnums = Enum.GetValues(typeof(FireMode));
 
@@ -130,17 +130,18 @@ namespace SimpleBallistics
 
         }
 
-        public static Vector3 NpcAimingAngle(BrainHuman NPCBrain, Vector3 initial, float npcDistanceToFire = 10.0f)
+        public static Vector3 NpcAimingAngle(BrainModuleBow NPCBrain, Vector3 initial, float npcDistanceToFire = 10.0f)
         {
+            //BrainModuleBow aimingModule = NPCBrain.GetModule<BrainModuleBow>();
             if (NPCBrain == null) return initial;
-            var inaccuracyMult = 0.2f * (NPCBrain.aimSpreadCone / npcDistanceToFire);
+            var inaccuracyMult = 0.2f * (NPCBrain.aimSpreadAngle / npcDistanceToFire);
             return new Vector3(
                         initial.x + (UnityEngine.Random.Range(-inaccuracyMult, inaccuracyMult)),
                         initial.y + (UnityEngine.Random.Range(-inaccuracyMult, inaccuracyMult)),
                         initial.z);
         }
 
-        public static void ApplyRecoil(Rigidbody itemRB, float[] recoilForces, float recoilMult = 1.0f, bool leftHandHaptic = false, bool rightHandHaptic = false, float hapticForce = 1.0f)
+        public static void ApplyRecoil(Rigidbody itemRB, float[] recoilForces, float recoilMult = 1.0f, bool leftHandHaptic = false, bool rightHandHaptic = false, float hapticForce = 1.0f, float[] recoilTorque = null)
         {
             if (rightHandHaptic) PlayerControl.handRight.HapticShort(hapticForce);
             if (leftHandHaptic) PlayerControl.handLeft.HapticShort(hapticForce);
@@ -150,39 +151,74 @@ namespace SimpleBallistics
                 UnityEngine.Random.Range(recoilForces[0], recoilForces[1]) * recoilMult,
                 UnityEngine.Random.Range(recoilForces[2], recoilForces[3]) * recoilMult,
                 UnityEngine.Random.Range(recoilForces[4], recoilForces[5]) * recoilMult));
+            if (recoilTorque == null) return;
+            itemRB.AddRelativeTorque(new Vector3(
+                UnityEngine.Random.Range(recoilTorque[0], recoilTorque[1]) * recoilMult,
+                UnityEngine.Random.Range(recoilTorque[2], recoilTorque[3]) * recoilMult,
+                UnityEngine.Random.Range(recoilTorque[4], recoilTorque[5]) * recoilMult));
+        }
+
+        public static void IgnoreProjectile(Item item, Item i, bool ignore = true)
+        {
+            foreach (ColliderGroup colliderGroup in item.colliderGroups)
+            {
+                foreach (Collider collider in colliderGroup.colliders)
+                {
+                    foreach (ColliderGroup colliderGroupProjectile in i.colliderGroups)
+                    {
+                        foreach (Collider colliderProjectile in colliderGroupProjectile.colliders)
+                        {
+                            Physics.IgnoreCollision(collider, colliderProjectile, ignore);
+                        }
+                    }
+                }
+            }
         }
 
         public static void ShootProjectile(Item shooterItem, string projectileID, Transform spawnPoint, string imbueSpell = null, float forceMult = 1.0f, float throwMult = 1.0f, bool pooled = false)
         {
-            ItemData spawnedItemData = Catalog.GetData<ItemData>(projectileID, true);
-            if (spawnedItemData == null) return;
-            spawnedItemData.SpawnAsync(i =>
+            if ((spawnPoint == null) || (String.IsNullOrEmpty(projectileID))) return;
+            var projectileData = Catalog.GetData<ItemData>(projectileID, true);
+            if (projectileData == null)
             {
-                try
+                Debug.LogError("[SimpleFirearmsFramework][ERROR] No projectile named " + projectileID.ToString());
+                return;
+            }
+            else
+            {
+                Vector3 shootLocation = new Vector3(spawnPoint.position.x, spawnPoint.position.y, spawnPoint.position.z);
+                Quaternion shooterAngles = Quaternion.Euler(spawnPoint.rotation.eulerAngles);
+                Vector3 shootVelocity = new Vector3(shooterItem.rb.velocity.x, shooterItem.rb.velocity.y, shooterItem.rb.velocity.z);
+                projectileData.SpawnAsync(i =>
                 {
-                    i.transform.position = spawnPoint.position;
-                    i.transform.rotation = Quaternion.Euler(spawnPoint.rotation.eulerAngles);
-                    shooterItem.IgnoreObjectCollision(i);
-                    i.ignoredItem = shooterItem;
-                    Physics.IgnoreCollision(shooterItem.colliderGroups[0].colliders[0], i.colliderGroups[0].colliders[0]);
-                    i.rb.velocity = shooterItem.rb.velocity;
-                    i.rb.AddForce(i.rb.transform.forward * 1000.0f * forceMult);
-                    //i.rb.useGravity = false;
-                    i.Throw(throwMult, Item.FlyDetection.CheckAngle);
-                    if (!String.IsNullOrEmpty(imbueSpell))
+                    try
                     {
-                        // Set imbue charge on projectile using ItemProjectileSimple subclass
-                        ItemSimpleProjectile projectileController = i.gameObject.GetComponent<ItemSimpleProjectile>();
-                        if (projectileController != null) projectileController.AddChargeToQueue(imbueSpell);
+                        i.Throw(1f, Item.FlyDetection.Forced);
+                        shooterItem.IgnoreObjectCollision(i);
+                        i.IgnoreObjectCollision(shooterItem);
+                        i.IgnoreRagdollCollision(Player.local.creature.ragdoll);
+                        IgnoreProjectile(shooterItem, i, true);
+                        SimpleProjectile projectileController = i.gameObject.GetComponent<SimpleProjectile>();
+                        if (projectileController != null) projectileController.SetShooterItem(shooterItem);
+                        i.transform.position = shootLocation;
+                        i.transform.rotation = shooterAngles;
+                        i.rb.velocity = shootVelocity;
+                        i.rb.AddForce(i.rb.transform.forward * 1000.0f * forceMult);
+                        if (!String.IsNullOrEmpty(imbueSpell))
+                        {
+                            if (projectileController != null) projectileController.AddChargeToQueue(imbueSpell);
+                        }
                     }
-                }
-                catch { Debug.Log("[Fisher-Firearms] EXCEPTION IN SPAWNING ");
-                }
-            },
-            spawnPoint.position,
-            Quaternion.Euler(spawnPoint.rotation.eulerAngles),
-            null,
-            false);
+                    catch
+                    {
+                        Debug.Log("[SimpleFirearmsFramework] EXCEPTION IN SPAWNING ");
+                    }
+                },
+                shootLocation,
+                Quaternion.Euler(Vector3.zero),
+                null,
+                false);
+            }
         }
 
         public static string GetItemSpellChargeID(Item interactiveObject)
@@ -221,6 +257,7 @@ namespace SimpleBallistics
                     {
                         //materialEffectData = daggerEffectData
                     };
+
                     CollisionInstance collisionStruct = new CollisionInstance(damageStruct, (MaterialData)sourceMaterial, (MaterialData)targetMaterial)
                     {
                         contactPoint = hitPoint
