@@ -46,7 +46,7 @@ namespace SimpleBallistics
         BrainData thisNPCBrain;
         BrainModuleBow BrainBow;
         BrainModuleMelee BrainMelee;
-        BrainModuleParry BrainParry;
+        BrainModuleDefense BrainParry;
         float npcShootDelay;
 
         void Awake()
@@ -155,9 +155,9 @@ namespace SimpleBallistics
                 thisNPCBrain = thisNPC.brain.instance;
                 BrainBow = thisNPCBrain.GetModule<BrainModuleBow>();
                 BrainMelee = thisNPCBrain.GetModule<BrainModuleMelee>();
-                BrainParry = thisNPCBrain.GetModule<BrainModuleParry>();
+                BrainParry = thisNPCBrain.GetModule<BrainModuleDefense>();
                 thisNPC.brain.currentTarget = Player.local.creature;
-                thisNPC.brain.isParrying = true;
+                thisNPC.brain.isDefending = true;
                 BrainMelee.meleeEnabled = module.npcMeleeEnableOverride;
             }
         }
@@ -190,7 +190,8 @@ namespace SimpleBallistics
             if (BrainParry != null)
             {
                 if (thisNPC.brain.currentTarget != null) {
-                    BrainParry.StartParry(thisNPC.brain.currentTarget);
+                    //BrainParry.StartParry(thisNPC.brain.currentTarget);
+                    BrainParry.StartDefense();
                     if (!module.npcMeleeEnableOverride)
                     {
                         BrainMelee.meleeEnabled = Vector3.Distance(item.rb.position, thisNPC.brain.currentTarget.transform.position) <= module.npcMeleeEnableDistance;
@@ -244,7 +245,7 @@ namespace SimpleBallistics
                     {
                         Fire(true);
                         DamageCreatureCustom(target, module.npcDamageToPlayer, hit.point);
-                        npcShootDelay = UnityEngine.Random.Range(BrainBow.bowAimMinMaxDelay.x, BrainBow.bowAimMinMaxDelay.y);
+                        npcShootDelay = UnityEngine.Random.Range(BrainBow.minMaxTimeBetweenAttack.x, BrainBow.minMaxTimeBetweenAttack.y);
                     }
                 }
             }
@@ -267,7 +268,7 @@ namespace SimpleBallistics
         {
             if (playEffects) PreFireEffects();
             if (firedByNPC) return;
-            ShootProjectile(this.item, module.projectileID, muzzlePoint, GetItemSpellChargeID(item), module.bulletForce, module.throwMult);
+            ShootProjectile(this.item, module.projectileID, muzzlePoint, GetItemSpellChargeID(item), module.bulletForce, module.throwMult, module.pooled);
             ApplyRecoil(item.rb, module.recoilForces, module.recoilMult, gunGripHeldLeft, gunGripHeldRight, module.hapticForce, module.recoilTorques);
         }
 
