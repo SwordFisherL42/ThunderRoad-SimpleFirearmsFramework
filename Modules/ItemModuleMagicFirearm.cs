@@ -21,6 +21,7 @@ namespace SimpleBallistics
         // Item definition references
         public string mainGripID;
         public string projectileID;
+        public bool pooled = false;
 
         // NPC settings
         public string npcRaycastPositionRef;

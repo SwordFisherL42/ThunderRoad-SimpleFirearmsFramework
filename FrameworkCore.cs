@@ -141,7 +141,8 @@ namespace SimpleBallistics
         public static Vector3 NpcAimingAngle(BrainModuleBow NPCBrain, Vector3 initial, float npcDistanceToFire = 10.0f)
         {
             if (NPCBrain == null) return initial;
-            var inaccuracyMult = 0.2f * (NPCBrain.aimSpreadAngle / npcDistanceToFire);
+            float aimSpread = UnityEngine.Random.Range(NPCBrain.minMaxTimeToAttackFromAim.x, NPCBrain.minMaxTimeToAttackFromAim.y);
+            var inaccuracyMult = 0.2f * (aimSpread / npcDistanceToFire);
             return new Vector3(
                         initial.x + (UnityEngine.Random.Range(-inaccuracyMult, inaccuracyMult)),
                         initial.y + (UnityEngine.Random.Range(-inaccuracyMult, inaccuracyMult)),
@@ -168,7 +169,6 @@ namespace SimpleBallistics
         {
             if (rightHandHaptic) PlayerControl.handRight.HapticShort(hapticForce);
             if (leftHandHaptic) PlayerControl.handLeft.HapticShort(hapticForce);
-
             if (recoilForces == null) return;
             itemRB.AddRelativeForce(new Vector3(
                 UnityEngine.Random.Range(recoilForces[0], recoilForces[1]) * recoilMult,
@@ -251,7 +251,7 @@ namespace SimpleBallistics
                 shootLocation,
                 Quaternion.Euler(Vector3.zero),
                 null,
-                false);
+                pooled);
             }
         }
         /// <summary>
