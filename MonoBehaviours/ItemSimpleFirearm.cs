@@ -16,11 +16,11 @@ namespace SimpleBallistics
 {
     public class ItemSimpleFirearm : MonoBehaviour
     {
-        //  ThunderRoad references
+        // ThunderRoad references  //
         Item item;
         ItemModuleMagicFirearm module;
         Handle gunGrip;
-        //  Unity references
+        //  Unity references  //
         Animator Animations;
         Transform muzzlePoint;
         Transform npcRayCastPoint;
@@ -31,7 +31,8 @@ namespace SimpleBallistics
         AudioSource switchSound;
         AudioSource reloadSound;
         AudioSource earlyFireSound;
-        //  Weapon logic references
+        readonly string defaultHandleName = "Handle";
+        //  Weapon logic references  //
         FireMode fireModeSelection;
         List<int> allowedFireModes;
         int remaingingAmmo;
@@ -41,7 +42,9 @@ namespace SimpleBallistics
         bool gunGripHeldLeft;
         bool gunGripHeldRight;
         bool isFiring;
-        //  NPC control logic
+        bool useRaycast;
+        float rayCastMaxDist;
+        //  NPC control logic  //
         Creature thisNPC;
         BrainData thisNPCBrain;
         BrainModuleBow BrainBow;
@@ -50,9 +53,14 @@ namespace SimpleBallistics
         float npcShootDelay;
 
         void Awake()
-        {   // TODO: clean up Awake references
+        {
             item = GetComponent<Item>();
             module = item.data.GetModule<ItemModuleMagicFirearm>();
+            // Prioritize local settings, then fetch global settings //
+            useRaycast = module.useHitscan ? true : Modules.LevelModuleBulletPierce.local.useHitscan;
+            rayCastMaxDist = module.useHitscan ? module.hitscanMaxDistance : Modules.LevelModuleBulletPierce.local.hitscanMaxDistance;
+            if (rayCastMaxDist <= 0f) rayCastMaxDist = Mathf.Infinity;
+
             try
             {
                 if (!string.IsNullOrEmpty(module.muzzlePositionRef)) muzzlePoint = item.GetCustomReference(module.muzzlePositionRef);
@@ -60,30 +68,26 @@ namespace SimpleBallistics
             }
             catch
             {
-                Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"muzzlePositionRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.muzzlePositionRef));
+                Debug.LogError(string.Format("[SimpleFirearmsFramework] ERROR: '\"muzzlePositionRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.muzzlePositionRef));
                 muzzlePoint = item.transform;
             }
             //  Fetch Animator, ParticleSystem, and AudioSources from Custom References (see "How-To Guide" for more info on custom references)
             if (!string.IsNullOrEmpty(module.fireSoundRef)) fireSound = item.GetCustomReference(module.fireSoundRef).GetComponent<AudioSource>();
-            else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"fireSoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.fireSoundRef));
             if (!string.IsNullOrEmpty(module.emptySoundRef)) emptySound = item.GetCustomReference(module.emptySoundRef).GetComponent<AudioSource>();
-            else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"emptySoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.emptySoundRef));
             if (!string.IsNullOrEmpty(module.reloadSoundRef)) reloadSound = item.GetCustomReference(module.reloadSoundRef).GetComponent<AudioSource>();
-            else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"reloadSoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.reloadSoundRef));
             if (!string.IsNullOrEmpty(module.swtichSoundRef)) switchSound = item.GetCustomReference(module.swtichSoundRef).GetComponent<AudioSource>();
-            else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"swtichSoundRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.swtichSoundRef));
             if (!string.IsNullOrEmpty(module.npcRaycastPositionRef)) npcRayCastPoint = item.GetCustomReference(module.npcRaycastPositionRef);
-            else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"npcRaycastPositionRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.npcRaycastPositionRef));
             if (!string.IsNullOrEmpty(module.muzzleFlashRef)) MuzzleFlash = item.GetCustomReference(module.muzzleFlashRef).GetComponent<ParticleSystem>();
-            else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"muzzleFlashRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.muzzleFlashRef));
             if (!string.IsNullOrEmpty(module.animatorRef)) Animations = item.GetCustomReference(module.animatorRef).GetComponent<Animator>();
-            else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"animatorRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.animatorRef));
             if (!string.IsNullOrEmpty(module.earlyFireSoundRef)) earlyFireSound = item.GetCustomReference(module.earlyFireSoundRef).GetComponent<AudioSource>();
-            else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"secondaryFireSound\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.earlyFireSoundRef));
             if (!string.IsNullOrEmpty(module.earlyMuzzleFlashRef)) earlyMuzzleFlash = item.GetCustomReference(module.earlyMuzzleFlashRef).GetComponent<ParticleSystem>();
-            else if (module.verbose_logging) Debug.LogError(string.Format("[SimpleFirearmsFramework] Exception: '\"secondaryMuzzleFlashRef\": \"{0}\"' was set in JSON, but \"{0}\" is not present on the Unity Prefab.", module.earlyMuzzleFlashRef));
+            if (module.verbose_logging)
+            {
+                DebugMsg setupDebugger = new DebugMsg(module);
+                setupDebugger.PrintDebugMessages();
+            }
             if (npcRayCastPoint == null) { npcRayCastPoint = muzzlePoint; }
-            // Setup ammo tracking 
+            // Setup ammo tracking
             if (module.ammoCapacity > 0) remaingingAmmo = module.ammoCapacity;
             else infAmmo = true;
             // Override SFX volume from JSON
@@ -93,12 +97,12 @@ namespace SimpleBallistics
             // Get firemode based on numeric index of the enum
             fireModeSelection = (FireMode)fireModeEnums.GetValue(module.fireMode);
             if (module.allowedFireModes != null) allowedFireModes = new List<int>(module.allowedFireModes);
-            // Handle interaction events
+            // Handle interaction events //
             item.OnHeldActionEvent += OnHeldAction;
             if (!string.IsNullOrEmpty(module.mainGripID)) gunGrip = item.GetCustomReference(module.mainGripID).GetComponent<Handle>();
             if (gunGrip == null)
             {   // If not defined, get the first handle named "Handle", and if still not found try to get the first object with a Handle component
-                gunGrip = item.transform.Find("Handle").GetComponent<Handle>();
+                gunGrip = item.transform.Find(defaultHandleName).GetComponent<Handle>();
                 if (gunGrip == null) gunGrip = item.GetComponentInChildren<Handle>();
             }
             if (gunGrip != null)
@@ -190,7 +194,6 @@ namespace SimpleBallistics
             if (BrainParry != null)
             {
                 if (thisNPC.brain.currentTarget != null) {
-                    //BrainParry.StartParry(thisNPC.brain.currentTarget);
                     BrainParry.StartDefense();
                     if (!module.npcMeleeEnableOverride)
                     {
@@ -268,12 +271,15 @@ namespace SimpleBallistics
         {
             if (playEffects) PreFireEffects();
             if (firedByNPC) return;
-            ShootProjectile(this.item, module.projectileID, muzzlePoint, GetItemSpellChargeID(item), module.bulletForce, module.throwMult, module.pooled);
+            if (!useRaycast || !ShootRaycastDamage(muzzlePoint, module.bulletForce, rayCastMaxDist))
+            {
+                ShootProjectile(this.item, module.projectileID, muzzlePoint, GetItemSpellChargeID(item), module.bulletForce, module.throwMult, module.pooled);
+            }
             ApplyRecoil(item.rb, module.recoilForces, module.recoilMult, gunGripHeldLeft, gunGripHeldRight, module.hapticForce, module.recoilTorques);
         }
 
         IEnumerator FlintlockLinkedFire()
-        { // TODO: Abstract FlintlockLinkedFire into FrameworkCore
+        {
             if (!isEmpty && (infAmmo || remaingingAmmo > 0))
             {   // Fire Success
                 Animate(Animations, module.fireAnim);

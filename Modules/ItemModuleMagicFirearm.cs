@@ -32,6 +32,8 @@ namespace SimpleBallistics
         public float npcMeleeEnableDistance = 0.5f;
 
         // Custom Behaviour Settings
+        public bool useHitscan = false;
+        public float hitscanMaxDistance = 1f;
         public bool loopedFireSound = false;
         public int ammoCapacity = 0;
         public bool allowCycleFireMode = false;

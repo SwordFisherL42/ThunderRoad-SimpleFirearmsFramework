@@ -68,6 +68,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DebugMsg.cs" />
     <Compile Include="FrameworkCore.cs" />
     <Compile Include="Modules\LevelModuleBulletPierce.cs" />
     <Compile Include="MonoBehaviours\ItemSimpleFirearm.cs" />
