@@ -71,8 +71,30 @@ namespace SimpleBallistics
         public static Array projectileTypeEnums = Enum.GetValues(typeof(ProjectileType));
         public static Array attachmentTypeEnums = Enum.GetValues(typeof(AttachmentType));
         public static Array fireModeEnums = Enum.GetValues(typeof(FireMode));
+
+        static readonly string effectID1 = "HitBladeOnFlesh";
+        static readonly string effectID2 = "PenetrationDeepFlesh";
+        static readonly string effectID3 = "HitBladeDecalFlesh";
+        static readonly string customEffectID = Modules.LevelModuleBulletPierce.local.customEffectID;
+        static readonly LayerMask raycastMask = (1 << 27) | (1 << 13);
         static readonly MaterialData sourceMaterial = Catalog.GetData<MaterialData>("Metal", true);
         static readonly MaterialData targetMaterial = Catalog.GetData<MaterialData>("Flesh", true);
+        static readonly Dictionary<RagdollPart.Type, float> ragdollDamageMap =  new Dictionary<RagdollPart.Type, float>(){
+            { RagdollPart.Type.Head, 300f},
+            { RagdollPart.Type.Neck, 50f},
+            { RagdollPart.Type.Torso, 25f},
+            { RagdollPart.Type.LeftWing, 15f},
+            { RagdollPart.Type.RightWing, 15f},
+            { RagdollPart.Type.Tail, 15f},
+            { RagdollPart.Type.LeftArm, 10f},
+            { RagdollPart.Type.RightArm, 10f},
+            { RagdollPart.Type.LeftLeg, 10f},
+            { RagdollPart.Type.RightLeg, 10f},
+            { RagdollPart.Type.LeftFoot, 5},
+            { RagdollPart.Type.RightFoot, 5},
+            { RagdollPart.Type.LeftHand, 5},
+            { RagdollPart.Type.RightHand, 5},
+        };
 
         /// <summary>
         /// Take a given FireMode and return an increment/loop to the next enum value
@@ -99,6 +121,7 @@ namespace SimpleBallistics
                 else return (FireMode)fireModeEnums.GetValue(0);
             }
         }
+
         /// <summary>
         /// Play an animation state on the specified Animation controller
         /// </summary>
@@ -111,6 +134,7 @@ namespace SimpleBallistics
             animator.Play(animationName);
             return true;
         }
+
         /// <summary>
         /// Checks if an animation state is currently playing on the specified Animation controller 
         /// </summary>
@@ -131,6 +155,7 @@ namespace SimpleBallistics
                 return false;
             }
         }
+
         /// <summary>
         /// Calculate an artifcial error quantity for NPC aiming
         /// </summary>
@@ -148,6 +173,7 @@ namespace SimpleBallistics
                         initial.y + (UnityEngine.Random.Range(-inaccuracyMult, inaccuracyMult)),
                         initial.z);
         }
+
         /// <summary>
         /// Apply physics forces to an item and provide haptic player feedback
         /// </summary>
@@ -180,6 +206,7 @@ namespace SimpleBallistics
                 UnityEngine.Random.Range(recoilTorque[2], recoilTorque[3]) * recoilMult,
                 UnityEngine.Random.Range(recoilTorque[4], recoilTorque[5]) * recoilMult));
         }
+
         /// <summary>
         /// Set the physics ignore matrix between the colliders of two items
         /// </summary>
@@ -194,6 +221,76 @@ namespace SimpleBallistics
                         foreach (Collider colliderB in colliderGroupBy.colliders)
                             Physics.IgnoreCollision(colliderA, colliderB, ignore);
         }
+
+        /// <summary>
+        /// Simulate a Metal-Flesh collision if a target creature is in range.
+        /// </summary>
+        /// <param name="spawnPoint">Raycast position and rotational reference</param>
+        /// <param name="bulletForce">Simulated force to apply</param>
+        /// <param name="maxDistance">Creature detection range</param>
+        /// <param name="damageMultiplier">(optional) Linear scalar for damage map</param>
+        /// <returns>boolean representing the RayCast outcome</returns>
+        public static bool ShootRaycastDamage(Transform spawnPoint, float bulletForce, float maxDistance, float damageMultiplier = 1f)
+        {
+            if (Physics.Raycast(spawnPoint.position, spawnPoint.forward, out RaycastHit hit, maxDistance, raycastMask))
+            {
+                RagdollPart hitRDP = hit.transform.GetComponentInChildren<RagdollPart>();
+                if (hitRDP == null) return false;
+                Creature target = hit.transform.root.GetComponentInChildren<Creature>();
+                if (target == null) return false;
+                float damageApplied = ragdollDamageMap[hitRDP.type] * damageMultiplier;
+                ColliderGroup ragdollColliderGroup = hitRDP.colliderGroup;
+                DamageStruct newDamageStruct = new DamageStruct(DamageType.Pierce, damageApplied)
+                {
+                    active = true,
+                    damageType = DamageType.Pierce,
+                    baseDamage = damageApplied,
+                    damage = damageApplied,
+                    hitRagdollPart = hitRDP,
+                    penetration = DamageStruct.Penetration.Hit,
+                };
+                CollisionInstance newCollsionInstance = new CollisionInstance()
+                {
+                    active = true,
+                    incomplete = true,
+                    contactPoint = hit.point,
+                    contactNormal = hit.normal,
+                    sourceMaterial = sourceMaterial,
+                    targetMaterial = targetMaterial,
+                    damageStruct = newDamageStruct,
+                    intensity = 2.0f,
+                    hasEffect = true,
+                    targetColliderGroup = ragdollColliderGroup,
+                    sourceColliderGroup = ragdollColliderGroup
+                };
+                Catalog.GetData<EffectData>(effectID1).Spawn(hitRDP.transform).Play();
+                Catalog.GetData<EffectData>(effectID2).Spawn(hitRDP.transform).Play();
+                Catalog.GetData<EffectData>(effectID3).Spawn(
+                        hit.point,
+                        Quaternion.LookRotation(hit.normal, Vector3.up),
+                        hitRDP.transform,
+                        newCollsionInstance,
+                        true,
+                        ragdollColliderGroup,
+                        true
+                    ).Play();
+                Catalog.GetData<EffectData>(customEffectID).Spawn(
+                        hit.point,
+                        Quaternion.LookRotation(hit.normal, Vector3.up),
+                        hitRDP.transform,
+                        newCollsionInstance,
+                        true,
+                        ragdollColliderGroup,
+                        true
+                    ).Play();
+                hitRDP.rb.AddRelativeForce(spawnPoint.forward * bulletForce * 10f, ForceMode.Impulse);
+                target.Damage(newCollsionInstance);
+                return true;
+            }
+            else
+                return false;
+        }
+
         /// <summary>
         /// Spawn an item as a projectile, applying physics forces and game states once it is instantiated.
         /// </summary>
@@ -254,6 +351,7 @@ namespace SimpleBallistics
                 pooled);
             }
         }
+
         /// <summary>
         /// Get the current "Spell" charged onto the given item.
         /// </summary>
@@ -266,6 +364,7 @@ namespace SimpleBallistics
                     return itemImbue.spellCastBase.id;
             return null;
         }
+
         /// <summary>
         /// Transfer a given `SpellCastCharge` to a given `Imbue` over an incremental period asynchonously.
         /// </summary>
@@ -312,6 +411,7 @@ namespace SimpleBallistics
                 Debug.LogError($"[SimpleFirearmsFramework][ERROR][{Time.time}] Unable to perform custom enemy damage: {e.Message.ToString()}");
             }
         }
+
         /// <summary>
         /// Force firearm states to the locked to the completion of animations.
         /// </summary>
@@ -355,6 +455,7 @@ namespace SimpleBallistics
             }
             yield return null;
         }
+
         /// <summary>
         /// Top level method for activation of firearms. Behaviour and states are determined by the given parameters.
         /// </summary>

@@ -10,14 +10,19 @@ namespace SimpleBallistics.Modules
 {
     public class LevelModuleBulletPierce : LevelModule
     {
+        public bool useHitscan = false;
+        public float hitscanMaxDistance = 1f;
+        public string customEffectID = "PenetrationFisherFirearm";
+        public static LevelModuleBulletPierce local;
+
         private Harmony harmony;
-
         private const string harmonyPatchName = "Fisher.U11.BulletPierce";
-
         private const string damagerID = "FisherBulletPierce";
 
         public override IEnumerator OnLoadCoroutine()
         {
+            if (local == null) local = this;
+
             try
             {
                 if (!Harmony.HasAnyPatches(harmonyPatchName))
